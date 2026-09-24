@@ -83,6 +83,8 @@ npm run upgrade:card:testnet
 
 The deploy script writes `deployments/<network>-card.json`; running it again verifies the recorded deployment instead of redeploying. The upgrade script checks storage-layout compatibility before upgrading and records the history.
 
+On mainnet (`hardhat.mainnet.config.cjs`, network `xlayer`) the deployer key is `MAINNET_DEPLOYER_PRIVATE_KEY` (the testnet key is refused) and the deploy script first checks that no testnet address holds a role, that the admin is a contract (a Safe multisig), that the deployer keeps no role and that token metadata is served over https from a production host; it then needs `CONFIRM_MAINNET=yes`. Upgrades are proposed to the Safe: `npm run upgrade:card:mainnet` deploys the new implementation and prints the `upgradeToAndCall` transaction, and a second run records it once executed. `npm run verify:card:<testnet|mainnet>` verifies the implementation and proxy sources on OKLink.
+
 ## Security
 
 Please report vulnerabilities privately — see [SECURITY.md](SECURITY.md).

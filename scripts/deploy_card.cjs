@@ -1,12 +1,16 @@
 // Deploys the OpenHypeCollectible UUPS proxy. The deployer only pays gas: admin and relayer come
 // from the environment and the deployer keeps no role unless it is explicitly the admin.
 // Resumable: an existing report is verified, never redeployed.
+// Mainnet (network xlayer, hardhat.mainnet.config.cjs) runs lib/mainnet_guard.cjs first and needs
+// CONFIRM_MAINNET=yes after the printed plan.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { ethers, upgrades, network } = require('hardhat');
+const { defaultTestnetAddresses, mainnetDeployProblems } = require('../lib/mainnet_guard.cjs');
 
-const CHAINS = { xlayerTestnet: 1952n };
+const CHAINS = { xlayerTestnet: 1952n, xlayer: 196n };
+const MAINNET = 196n;
 
 async function main() {
   const chainId = CHAINS[network.name];
@@ -24,12 +28,25 @@ async function main() {
 
   let report = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
   if (!report) {
-    console.log(JSON.stringify({ chainId: Number(chainId), deployer: deployer.address, admin, relayer, baseURI }));
+    const plan = { chainId: Number(chainId), deployer: deployer.address, admin, relayer, baseURI };
+    console.log(JSON.stringify(plan));
+    if (chainId === MAINNET) {
+      const problems = mainnetDeployProblems({
+        ...plan,
+        adminCode: await ethers.provider.getCode(admin),
+        testnet: defaultTestnetAddresses(path.resolve(__dirname, '..')),
+        allowEoaAdmin: process.env.ALLOW_EOA_ADMIN === 'yes',
+      });
+      if (problems.length) throw new Error(`Refusing the mainnet deployment:\n- ${problems.join('\n- ')}`);
+      if (process.env.CONFIRM_MAINNET !== 'yes')
+        throw new Error('Mainnet plan above passed the checks. Re-run with CONFIRM_MAINNET=yes to deploy.');
+    }
     const card = await upgrades.deployProxy(Card, [admin, relayer, baseURI], { kind: 'uups', timeout: 120000 });
     report = {
       chainId: Number(chainId),
       proxy: await card.getAddress(),
       deployTx: card.deploymentTransaction().hash,
+      deployer: deployer.address,
       admin,
       relayer,
       baseURI,
