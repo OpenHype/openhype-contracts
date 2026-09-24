@@ -1,0 +1,31 @@
+{
+  "name": "@openhype/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenHype Card: non-transferable ERC-721 for vaulted physical trading cards",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OpenHype/openhype-contracts.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:card:testnet": "hardhat run --config hardhat.testnet.config.cjs --network xlayerTestnet scripts/deploy_card.cjs",
+    "inspect:tokens": "node scripts/inspect_token_authorization.cjs",
+    "upgrade:card:testnet": "hardhat run --config hardhat.testnet.config.cjs --network xlayerTestnet scripts/upgrade_card.cjs"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "3.0.8",
+    "@openzeppelin/contracts": "5.4.0",
+    "@openzeppelin/contracts-upgradeable": "5.4.0",
+    "@openzeppelin/hardhat-upgrades": "3.9.1",
+    "dotenv": "16.6.1",
+    "ethers": "6.14.4",
+    "hardhat": "2.26.3",
+    "solc": "0.8.30"
+  }
+}

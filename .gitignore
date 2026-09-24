@@ -1,0 +1,9 @@
+node_modules/
+artifacts/
+cache/
+coverage/
+
+.openzeppelin/*.lock
+deployments/*.tmp
+
+.env
