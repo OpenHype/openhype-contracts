@@ -2,7 +2,7 @@
 
 [OpenHype](https://openhype.com) is a collectible card platform. You open digital packs, battle and trade, and every card you pull is a real, graded trading card (for example PSA or CGC) stored in the OpenHype vault. You can sell a card back, keep it, or have the physical card shipped to you.
 
-Each card also exists on chain as an **OpenHype Card** NFT on [X Layer](https://www.okx.com/xlayer), so anyone can check which card a wallet holds and verify its grading certificate. This repository contains that contract.
+Each card also exists on chain as an NFT in the **OpenHype Collectibles** collection (symbol `OHC`, contract `OpenHypeCollectible`) on [X Layer](https://www.okx.com/xlayer), so anyone can check which card a wallet holds and verify its grading certificate. This repository contains that contract.
 
 > **Status:** not audited. Deployed on X Layer testnet only.
 
@@ -39,7 +39,7 @@ A holder can consent to one specific move by signing
 TransferWithAuthorization(address from,address to,uint256 tokenId,uint256 validAfter,uint256 validBefore,bytes32 nonce)
 ```
 
-in the EIP-712 domain `{name: "OpenHype Card", version: "1", chainId, verifyingContract}` (see `eip712Domain()` and `DOMAIN_SEPARATOR()`). As in EIP-3009, each random `bytes32` nonce can be used once (`authorizationState`), the authorization is valid only while `validAfter < block.timestamp < validBefore`, and `cancelAuthorization(authorizer, nonce, signature)` revokes an unused one — anyone may submit the cancellation, even while the contract is paused.
+in the EIP-712 domain `{name: "OpenHype Collectibles", version: "1", chainId, verifyingContract}` (see `eip712Domain()` and `DOMAIN_SEPARATOR()`). As in EIP-3009, each random `bytes32` nonce can be used once (`authorizationState`), the authorization is valid only while `validAfter < block.timestamp < validBefore`, and `cancelAuthorization(authorizer, nonce, signature)` revokes an unused one — anyone may submit the cancellation, even while the contract is paused.
 
 `transferWithAuthorization(from, to, tokenId, validAfter, validBefore, nonce, signature)` can only be called by `OPERATOR_ROLE`, so cards stay non-transferable by holders while every consented move carries an on-chain signature. Signatures are checked as ECDSA first and, for smart-contract wallets, ERC-1271.
 

@@ -5,7 +5,7 @@
   "admin": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
   "relayer": "0xB8E33FAbF9cAF7AA6b83D7DE8c044CCFbf9C03b7",
   "baseURI": "https://api-dev.openhype.com/v1/nft_metadata/asset/",
-  "implementation": "0x4b1726d57BD954c0F4B413D0CaB3C87548C6FC4a",
+  "implementation": "0x78F473E7a9EC12DE22Fa4f25cB7f57ACA8f688ea",
   "upgrades": [
     {
       "at": "2026-09-23T10:34:30.599Z",
@@ -24,6 +24,12 @@
       "from": "0x60a2cDb59CD6d8CC2Ca70E17cCEA853B6992C0c5",
       "to": "0x4b1726d57BD954c0F4B413D0CaB3C87548C6FC4a",
       "change": "ECDSA-first signature check (EIP-7702 wallets), security contact"
+    },
+    {
+      "at": "2026-09-24T08:08:09.137Z",
+      "from": "0x4b1726d57BD954c0F4B413D0CaB3C87548C6FC4a",
+      "to": "0x78F473E7a9EC12DE22Fa4f25cB7f57ACA8f688ea",
+      "change": "Renamed to OpenHypeCollectible; name/symbol/EIP-712 domain \"OpenHype Collectibles\" / \"OHC\""
     }
   ],
   "contractURI": "https://api-dev.openhype.com/v1/nft_metadata/contract"

@@ -9,7 +9,7 @@ pragma solidity 0.8.30;
  *  ╚██████╔╝██║     ███████╗██║ ╚████║██║  ██║   ██║   ██║     ███████╗
  *   ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚══════╝
  *
- *  OpenHype Card
+ *  OpenHype Collectibles
  *
  *  Every token is one graded physical trading card held in the OpenHype vault.
  *  tokenId is the card's permanent inventory identity.
@@ -33,16 +33,19 @@ import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/crypt
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
-/// @title OpenHype Card
+/// @title OpenHype Collectibles
 /// @notice Non-transferable ERC-721 for vaulted physical cards, moved only by the platform.
 /// @custom:security-contact team@binatir.com
-contract OpenHypeCard is
+contract OpenHypeCollectible is
     ERC721Upgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
     EIP712Upgradeable,
     UUPSUpgradeable
 {
+    string private constant NAME = "OpenHype Collectibles";
+    string private constant SYMBOL = "OHC";
+
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
@@ -79,7 +82,7 @@ contract OpenHypeCard is
     }
 
     function initialize(address admin, address relayer, string calldata uri) external initializer {
-        __ERC721_init("OpenHype Card", "OHCARD");
+        __ERC721_init(NAME, SYMBOL);
         __AccessControl_init();
         __Pausable_init();
         __EIP712_init(_EIP712Name(), _EIP712Version());
@@ -191,6 +194,16 @@ contract OpenHypeCard is
         _unpause();
     }
 
+    /// @dev Constant, like the EIP-712 domain: a proxy initialized under an earlier name reports this one
+    /// after an upgrade without re-initializing.
+    function name() public pure override returns (string memory) {
+        return NAME;
+    }
+
+    function symbol() public pure override returns (string memory) {
+        return SYMBOL;
+    }
+
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -228,7 +241,7 @@ contract OpenHypeCard is
 
     /// @dev Constant domain: proxies deployed before EIP-712 was added upgrade in place without re-initializing.
     function _EIP712Name() internal pure override returns (string memory) {
-        return "OpenHype Card";
+        return NAME;
     }
 
     function _EIP712Version() internal pure override returns (string memory) {

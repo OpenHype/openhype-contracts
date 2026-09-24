@@ -1,4 +1,4 @@
-// Deploys the OpenHypeCard UUPS proxy. The deployer only pays gas: admin and relayer come
+// Deploys the OpenHypeCollectible UUPS proxy. The deployer only pays gas: admin and relayer come
 // from the environment and the deployer keeps no role unless it is explicitly the admin.
 // Resumable: an existing report is verified, never redeployed.
 const fs = require('node:fs');
@@ -19,7 +19,7 @@ async function main() {
   const [deployer] = await ethers.getSigners();
 
   const file = path.resolve(__dirname, `../deployments/${network.name}-card.json`);
-  const Card = await ethers.getContractFactory('OpenHypeCard');
+  const Card = await ethers.getContractFactory('OpenHypeCollectible');
   await upgrades.validateImplementation(Card, { kind: 'uups' });
 
   let report = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;

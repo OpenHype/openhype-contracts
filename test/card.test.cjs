@@ -15,14 +15,14 @@ async function rejects(promise, contract, name) {
 
 async function deploy() {
   const [admin, relayer, user, other, custody] = await ethers.getSigners();
-  const Card = await ethers.getContractFactory('OpenHypeCard');
+  const Card = await ethers.getContractFactory('OpenHypeCollectible');
   const card = await upgrades.deployProxy(Card, [admin.address, relayer.address, 'https://meta.example/cards/'], {
     kind: 'uups',
   });
   return { admin, relayer, user, other, custody, card, asRelayer: card.connect(relayer) };
 }
 
-describe('OpenHypeCard', function () {
+describe('OpenHypeCollectible', function () {
   let f;
   beforeEach(async function () {
     f = await deploy();
@@ -35,7 +35,8 @@ describe('OpenHypeCard', function () {
     assert.equal(await card.hasRole(await card.OPERATOR_ROLE(), relayer.address), true);
     assert.equal(await card.hasRole(await card.MINTER_ROLE(), admin.address), false);
     assert.equal(await card.paused(), false);
-    assert.equal(await card.name(), 'OpenHype Card');
+    assert.equal(await card.name(), 'OpenHype Collectibles');
+    assert.equal(await card.symbol(), 'OHC');
   });
 
   it('mints single and batched tokens with ERC-5192 lock events', async function () {
@@ -128,7 +129,7 @@ describe('OpenHypeCard', function () {
     await card.setBaseURI('ipfs://cards/');
     assert.equal(await card.tokenURI(1n), 'ipfs://cards/1');
 
-    const V2 = await ethers.getContractFactory('OpenHypeCardV2Mock');
+    const V2 = await ethers.getContractFactory('OpenHypeCollectibleV2Mock');
     await assert.rejects(upgrades.upgradeProxy(await card.getAddress(), V2.connect(other)));
     const upgraded = await upgrades.upgradeProxy(await card.getAddress(), V2);
     assert.equal(await upgraded.version(), 2n);
@@ -165,7 +166,7 @@ describe('OpenHypeCard', function () {
     let domain, now;
     beforeEach(async function () {
       const { chainId } = await ethers.provider.getNetwork();
-      domain = { name: 'OpenHype Card', version: '1', chainId, verifyingContract: await f.card.getAddress() };
+      domain = { name: 'OpenHype Collectibles', version: '1', chainId, verifyingContract: await f.card.getAddress() };
       now = BigInt((await ethers.provider.getBlock('latest')).timestamp);
     });
     const authorize = async (signer, fields = {}) => {
@@ -185,7 +186,7 @@ describe('OpenHypeCard', function () {
 
     it('exposes a constant EIP-712 domain (EIP-5267) without initialization', async function () {
       const d = await f.card.eip712Domain();
-      assert.equal(d.name, 'OpenHype Card');
+      assert.equal(d.name, 'OpenHype Collectibles');
       assert.equal(d.version, '1');
       assert.equal(await f.card.DOMAIN_SEPARATOR(), ethers.TypedDataEncoder.hashDomain(domain));
     });

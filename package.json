@@ -2,7 +2,7 @@
   "name": "@openhype/contracts",
   "version": "0.1.0",
   "private": true,
-  "description": "OpenHype Card: non-transferable ERC-721 for vaulted physical trading cards",
+  "description": "OpenHype Collectibles: non-transferable ERC-721 for vaulted physical collectibles",
   "license": "MIT",
   "repository": {
     "type": "git",

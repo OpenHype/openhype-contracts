@@ -8,7 +8,7 @@ Include the affected contract and function, the network and address if deployed,
 
 ## Scope
 
-- `src/OpenHypeCard.sol` and its deployed proxies listed in the README.
+- `src/OpenHypeCollectible.sol` and its deployed proxies listed in the README.
 - Files under `src/test/` are test fixtures and are out of scope.
 
 ## Status

@@ -1,4 +1,4 @@
-// Upgrades the OpenHypeCard proxy recorded in deployments/<network>-card.json to the current source.
+// Upgrades the OpenHypeCollectible proxy recorded in deployments/<network>-card.json to the current source.
 // The OZ plugin validates storage-layout compatibility against .openzeppelin/ before sending anything.
 // The signer must hold DEFAULT_ADMIN_ROLE (on mainnet that is the multisig: use proposeUpgrade instead).
 const fs = require('node:fs');
@@ -8,7 +8,7 @@ const { ethers, upgrades, network } = require('hardhat');
 async function main() {
   const file = path.resolve(__dirname, `../deployments/${network.name}-card.json`);
   const report = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const Card = await ethers.getContractFactory('OpenHypeCard');
+  const Card = await ethers.getContractFactory('OpenHypeCollectible');
   const before = await upgrades.erc1967.getImplementationAddress(report.proxy);
   const card = await upgrades.upgradeProxy(report.proxy, Card, { kind: 'uups', timeout: 120000 });
   await card.waitForDeployment();
