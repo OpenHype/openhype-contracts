@@ -12,9 +12,13 @@ contract Eip3009TestToken is ERC20, EIP712 {
         "TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
     );
 
+    bytes32 public constant CANCEL_AUTHORIZATION_TYPEHASH =
+        keccak256("CancelAuthorization(address authorizer,bytes32 nonce)");
+
     mapping(address => mapping(bytes32 => bool)) public authorizationState;
 
     event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce);
+    event AuthorizationCanceled(address indexed authorizer, bytes32 indexed nonce);
 
     constructor(string memory name_, string memory version_) ERC20(name_, "TUSD") EIP712(name_, version_) {}
 
@@ -51,6 +55,15 @@ contract Eip3009TestToken is ERC20, EIP712 {
         authorizationState[from][nonce] = true;
         emit AuthorizationUsed(from, nonce);
         _transfer(from, to, value);
+    }
+
+    /// Like FiatToken: marks the nonce used without moving funds, so a pending transferWithAuthorization reverts.
+    function cancelAuthorization(address authorizer, bytes32 nonce, uint8 v, bytes32 r, bytes32 s) external {
+        require(!authorizationState[authorizer][nonce], "authorization is used");
+        bytes32 structHash = keccak256(abi.encode(CANCEL_AUTHORIZATION_TYPEHASH, authorizer, nonce));
+        require(ECDSA.recover(_hashTypedDataV4(structHash), v, r, s) == authorizer, "invalid signature");
+        authorizationState[authorizer][nonce] = true;
+        emit AuthorizationCanceled(authorizer, nonce);
     }
 }
 
