@@ -16,9 +16,11 @@ async function rejects(promise, contract, name) {
 async function deploy() {
   const [admin, relayer, user, other, vault] = await ethers.getSigners();
   const Card = await ethers.getContractFactory('OpenHypeCollectible');
-  const card = await upgrades.deployProxy(Card, [admin.address, relayer.address, 'https://meta.example/cards/'], {
-    kind: 'uups',
-  });
+  const card = await upgrades.deployProxy(
+    Card,
+    [admin.address, relayer.address, 'https://meta.example/cards/', 'https://meta.example/contract'],
+    { kind: 'uups' },
+  );
   return { admin, relayer, user, other, vault, card, asRelayer: card.connect(relayer) };
 }
 
@@ -114,9 +116,9 @@ describe('OpenHypeCollectible', function () {
     await assert.doesNotReject(asRelayer.burn(1n));
   });
 
-  it('advertises ERC721, ERC-5192 and AccessControl', async function () {
+  it('advertises ERC721, ERC-5192, ERC-4906 and AccessControl', async function () {
     const { card } = f;
-    for (const id of ['0x80ac58cd', '0x5b5e139f', '0xb45a3c0e', '0x7965db0b', '0x01ffc9a7']) {
+    for (const id of ['0x80ac58cd', '0x5b5e139f', '0xb45a3c0e', '0x49064906', '0x7965db0b', '0x01ffc9a7']) {
       assert.equal(await card.supportsInterface(id), true, id);
     }
     assert.equal(await card.supportsInterface('0xffffffff'), false);
@@ -126,8 +128,10 @@ describe('OpenHypeCollectible', function () {
     const { card, asRelayer, user, other } = f;
     await asRelayer.mint(user.address, 1n);
     await rejects(card.connect(other).setBaseURI('x/'), card, 'AccessControlUnauthorizedAccount');
-    await card.setBaseURI('ipfs://cards/');
+    const receipt = await (await card.setBaseURI('ipfs://cards/')).wait();
     assert.equal(await card.tokenURI(1n), 'ipfs://cards/1');
+    const refresh = receipt.logs.map(l => card.interface.parseLog(l)).find(l => l?.name === 'BatchMetadataUpdate');
+    assert.deepEqual([...refresh.args], [0n, ethers.MaxUint256]);
 
     const V2 = await ethers.getContractFactory('OpenHypeCollectibleV2Mock');
     await assert.rejects(upgrades.upgradeProxy(await card.getAddress(), V2.connect(other)));
@@ -137,18 +141,35 @@ describe('OpenHypeCollectible', function () {
     assert.equal(await upgraded.tokenURI(1n), 'ipfs://cards/1');
   });
 
-  it('publishes collection metadata through an admin-set contractURI (ERC-7572)', async function () {
+  it('publishes collection metadata through contractURI (ERC-7572), set at initialization', async function () {
     const { card, other } = f;
-    assert.equal(await card.contractURI(), '');
-    await rejects(card.connect(other).setContractURI('https://x/contract'), card, 'AccessControlUnauthorizedAccount');
-    const receipt = await (await card.setContractURI('https://meta.example/contract')).wait();
     assert.equal(await card.contractURI(), 'https://meta.example/contract');
+    const deployed = await ethers.provider.getTransactionReceipt(card.deploymentTransaction().hash);
+    assert.ok(deployed.logs.some(l => card.interface.parseLog(l)?.name === 'ContractURIUpdated'));
+    await rejects(card.connect(other).setContractURI('https://x/contract'), card, 'AccessControlUnauthorizedAccount');
+    const receipt = await (await card.setContractURI('https://meta.example/contract-v2')).wait();
+    assert.equal(await card.contractURI(), 'https://meta.example/contract-v2');
     assert.ok(receipt.logs.some(l => card.interface.parseLog(l)?.name === 'ContractURIUpdated'));
+  });
+
+  it('announces metadata refreshes (ERC-4906) from the operator or the admin only', async function () {
+    const { card, asRelayer, other } = f;
+    const events = async tx => (await (await tx).wait()).logs.map(l => card.interface.parseLog(l)).filter(Boolean);
+    const single = await events(asRelayer.refreshMetadata([7n, 12374545324241799249n]));
+    assert.deepEqual(
+      single.map(l => [l.name, l.args[0]]),
+      [['MetadataUpdate', 7n], ['MetadataUpdate', 12374545324241799249n]],
+    );
+    const all = await events(card.refreshAllMetadata());
+    assert.deepEqual(all.map(l => [l.name, ...l.args]), [['BatchMetadataUpdate', 0n, ethers.MaxUint256]]);
+    assert.equal((await events(card.refreshMetadata([1n]))).length, 1);
+    await rejects(card.connect(other).refreshMetadata([1n]), card, 'AccessControlUnauthorizedAccount');
+    await rejects(card.connect(other).refreshAllMetadata(), card, 'AccessControlUnauthorizedAccount');
   });
 
   it('rejects re-initialization', async function () {
     const { card, other } = f;
-    await rejects(card.initialize(other.address, other.address, 'x/'), card, 'InvalidInitialization');
+    await rejects(card.initialize(other.address, other.address, 'x/', 'y'), card, 'InvalidInitialization');
   });
 
   describe('holder-signed transfers (EIP-712)', function () {

@@ -8,12 +8,13 @@ Each card also exists on chain as an NFT in the **OpenHype Collectibles** collec
 
 ## How it works
 
-- **One token per physical card.** `tokenId` is the card's permanent inventory identity. Token metadata includes the grading company and certificate number, which anyone can check with the grader.
+- **One token per physical card in the vault.** `tokenId` is the card's inventory identity for its stay in the vault; a card deposited again later is a new inventory unit with a new `tokenId`. Token metadata includes the grading company and certificate number, which anyone can check with the grader.
 - **Locked tokens (ERC-5192).** Holders cannot approve or transfer their cards directly. Ownership follows what happens in the OpenHype app, and the platform mirrors it on chain.
 - **Platform-operated moves.** The platform mints a card when it is pulled (or pre-mints stock into the platform vault address), moves it on buyback, battles and trades, and burns it when the physical card is shipped to its owner. A burned `tokenId` can never be minted again.
 - **Gasless for users.** The platform sends every transaction and pays the gas.
 - **Holder consent (EIP-712).** A holder can authorize a specific move by signing a `TransferWithAuthorization`, modelled on EIP-3009; the platform relays it.
-- **Collection metadata** is published through `contractURI` (ERC-7572).
+- **Collection metadata** is published through `contractURI` (ERC-7572), set at deployment (`CARD_CONTRACT_URI`).
+- **Metadata refresh** (ERC-4906): `setBaseURI` announces a refresh of every token; the operator or admin can call `refreshMetadata(tokenIds)` or `refreshAllMetadata()` after card images or grades change off chain.
 
 ## Trust model
 
@@ -27,9 +28,9 @@ The on-chain token mirrors a physical card held by OpenHype, so the platform is 
 
 | Role | Held by | Can |
 | --- | --- | --- |
-| `DEFAULT_ADMIN_ROLE` | admin (multisig on mainnet) | upgrade, grant/revoke roles, pause, set base URI and contract URI |
+| `DEFAULT_ADMIN_ROLE` | admin (multisig on mainnet) | upgrade, grant/revoke roles, pause, set base URI and contract URI, refresh metadata |
 | `MINTER_ROLE` | platform relayer | `mint`, `mintBatch` |
-| `OPERATOR_ROLE` | platform relayer | `operatorTransfer`, `burn`, relay `transferWithAuthorization` |
+| `OPERATOR_ROLE` | platform relayer | `operatorTransfer`, `burn`, relay `transferWithAuthorization`, `refreshMetadata` / `refreshAllMetadata` |
 
 ## Holder consent
 
@@ -77,13 +78,13 @@ Solidity 0.8.30, OpenZeppelin 5.4.0, Hardhat 2.26.3, optimizer 200 runs, EVM `pa
 Copy `.env.example` to `.env` and set `DEPLOYER_PRIVATE_KEY` (it only pays gas and keeps no role unless it is also the admin).
 
 ```sh
-CARD_ADMIN_ADDRESS=0x... CARD_RELAYER_ADDRESS=0x... CARD_BASE_URI=https://.../asset/ npm run deploy:card:testnet
+CARD_ADMIN_ADDRESS=0x... CARD_RELAYER_ADDRESS=0x... CARD_BASE_URI=https://.../asset/ CARD_CONTRACT_URI=https://.../contract npm run deploy:card:testnet
 npm run upgrade:card:testnet
 ```
 
 The deploy script writes `deployments/<network>-card.json`; running it again verifies the recorded deployment instead of redeploying. The upgrade script checks storage-layout compatibility before upgrading and records the history.
 
-On mainnet (`hardhat.mainnet.config.cjs`, network `xlayer`) the deployer key is `MAINNET_DEPLOYER_PRIVATE_KEY` (the testnet key is refused) and the deploy script first checks that no testnet address holds a role, that the admin is a contract (a Safe multisig), that the deployer keeps no role and that token metadata is served over https from a production host; it then needs `CONFIRM_MAINNET=yes`. Upgrades are proposed to the Safe: `npm run upgrade:card:mainnet` deploys the new implementation and prints the `upgradeToAndCall` transaction, and a second run records it once executed. `npm run verify:card:<testnet|mainnet>` verifies the implementation and proxy sources on OKLink.
+On mainnet (`hardhat.mainnet.config.cjs`, network `xlayer`) the deployer key is `MAINNET_DEPLOYER_PRIVATE_KEY` (the testnet key is refused) and the deploy script first checks that no testnet address holds a role, that the admin is a contract (a Safe multisig), that the deployer keeps no role and that token and collection metadata (`CARD_BASE_URI`, `CARD_CONTRACT_URI`) are served over https from a production host; it then needs `CONFIRM_MAINNET=yes`. Upgrades are proposed to the Safe: `npm run upgrade:card:mainnet` deploys the new implementation and prints the `upgradeToAndCall` transaction, and a second run records it once executed. `npm run verify:card:<testnet|mainnet>` verifies the implementation and proxy sources on OKLink.
 
 ## Security
 

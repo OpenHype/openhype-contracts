@@ -20,9 +20,11 @@ pragma solidity 0.8.30;
  *    trades, and burns it when the physical card is shipped to its owner.
  *  - A holder can consent to a move by signing an EIP-712 TransferWithAuthorization
  *    (modelled on EIP-3009); the platform relays it and pays the gas.
- *  - A burned tokenId can never be minted again.
+ *  - A burned tokenId can never be minted again. A tokenId stands for one stay of the card
+ *    in the vault: a card deposited again later is a new inventory unit with a new tokenId.
  *  - Token metadata includes the grading certificate, verifiable with the grader;
- *    collection metadata is published through contractURI (ERC-7572).
+ *    collection metadata is published through contractURI (ERC-7572), and metadata
+ *    changes are announced with ERC-4906 events.
  */
 
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
@@ -75,13 +77,22 @@ contract OpenHypeCollectible is
     event AuthorizationCanceled(address indexed authorizer, bytes32 indexed nonce);
     /// @dev ERC-7572
     event ContractURIUpdated();
+    /// @dev ERC-4906
+    event MetadataUpdate(uint256 _tokenId);
+    event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address admin, address relayer, string calldata uri) external initializer {
+    /// @param uri Token metadata base URI: tokenURI is this plus the decimal tokenId.
+    /// @param collectionURI Collection metadata (ERC-7572), so a Safe-administered deployment
+    /// shows its name and image from the start.
+    function initialize(address admin, address relayer, string calldata uri, string calldata collectionURI)
+        external
+        initializer
+    {
         __ERC721_init(NAME, SYMBOL);
         __AccessControl_init();
         __Pausable_init();
@@ -90,6 +101,8 @@ contract OpenHypeCollectible is
         _grantRole(MINTER_ROLE, relayer);
         _grantRole(OPERATOR_ROLE, relayer);
         baseURI_ = uri;
+        contractURI_ = collectionURI;
+        emit ContractURIUpdated();
     }
 
     // ---------------------------------------------------------------- platform moves
@@ -174,6 +187,7 @@ contract OpenHypeCollectible is
 
     function setBaseURI(string calldata uri) external onlyRole(DEFAULT_ADMIN_ROLE) {
         baseURI_ = uri;
+        emit BatchMetadataUpdate(0, type(uint256).max);
     }
 
     /// @notice Collection metadata (ERC-7572): name, description, image, banner and links.
@@ -184,6 +198,19 @@ contract OpenHypeCollectible is
     function setContractURI(string calldata uri) external onlyRole(DEFAULT_ADMIN_ROLE) {
         contractURI_ = uri;
         emit ContractURIUpdated();
+    }
+
+    // ---------------------------------------------------------------- metadata refresh (ERC-4906)
+
+    /// @notice Asks explorers and wallets to re-read these tokens' metadata (image, grade or
+    /// certificate changed off chain). tokenIds are sparse, so there is no range form.
+    function refreshMetadata(uint256[] calldata tokenIds) external onlyOperatorOrAdmin {
+        for (uint256 i = 0; i < tokenIds.length; i++) emit MetadataUpdate(tokenIds[i]);
+    }
+
+    /// @notice Asks explorers and wallets to re-read every token's metadata.
+    function refreshAllMetadata() external onlyOperatorOrAdmin {
+        emit BatchMetadataUpdate(0, type(uint256).max);
     }
 
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -210,10 +237,16 @@ contract OpenHypeCollectible is
         override(ERC721Upgradeable, AccessControlUpgradeable)
         returns (bool)
     {
-        return interfaceId == 0xb45a3c0e || super.supportsInterface(interfaceId);
+        // ERC-5192 (locked) and ERC-4906 (metadata update events).
+        return interfaceId == 0xb45a3c0e || interfaceId == 0x49064906 || super.supportsInterface(interfaceId);
     }
 
     // ---------------------------------------------------------------- internal
+
+    modifier onlyOperatorOrAdmin() {
+        if (!hasRole(OPERATOR_ROLE, _msgSender())) _checkRole(DEFAULT_ADMIN_ROLE);
+        _;
+    }
 
     function _mintLocked(address to, uint256 tokenId) private {
         if (burned[tokenId]) revert TokenBurned(tokenId);

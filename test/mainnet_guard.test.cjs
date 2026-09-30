@@ -10,6 +10,7 @@ const ok = {
   admin: a(2),
   relayer: a(3),
   baseURI: 'https://api.openhype.com/v1/nft_metadata/asset/',
+  contractURI: 'https://api.openhype.com/v1/nft_metadata/contract',
   adminCode: '0x6080',
   testnet: new Set([a(9)]),
 };
@@ -42,7 +43,10 @@ describe('mainnet deployment guard', function () {
       'not a url',
     ]) {
       assert.ok(mainnetDeployProblems({ ...ok, baseURI }).length > 0, baseURI);
+      const contractURI = baseURI.replace('/asset/', '/contract');
+      assert.ok(mainnetDeployProblems({ ...ok, contractURI }).some(p => p.includes('CARD_CONTRACT_URI')), contractURI);
     }
+    assert.ok(mainnetDeployProblems({ ...ok, contractURI: undefined }).some(p => p.includes('CARD_CONTRACT_URI')));
   });
   it('collects testnet addresses from the deployment record and the key file, never the keys', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-'));
