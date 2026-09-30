@@ -9,8 +9,8 @@ const ok = {
   deployer: a(1),
   admin: a(2),
   relayer: a(3),
-  baseURI: 'https://api.openhype.com/v1/nft_metadata/asset/',
-  contractURI: 'https://api.openhype.com/v1/nft_metadata/contract',
+  baseURI: 'https://api-prod.openhype.com/v1/nft_metadata/asset/',
+  contractURI: 'https://api-prod.openhype.com/v1/nft_metadata/contract',
   adminCode: '0x6080',
   testnet: new Set([a(9)]),
 };
