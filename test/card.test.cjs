@@ -14,12 +14,12 @@ async function rejects(promise, contract, name) {
 }
 
 async function deploy() {
-  const [admin, relayer, user, other, custody] = await ethers.getSigners();
+  const [admin, relayer, user, other, vault] = await ethers.getSigners();
   const Card = await ethers.getContractFactory('OpenHypeCollectible');
   const card = await upgrades.deployProxy(Card, [admin.address, relayer.address, 'https://meta.example/cards/'], {
     kind: 'uups',
   });
-  return { admin, relayer, user, other, custody, card, asRelayer: card.connect(relayer) };
+  return { admin, relayer, user, other, vault, card, asRelayer: card.connect(relayer) };
 }
 
 describe('OpenHypeCollectible', function () {
@@ -40,13 +40,13 @@ describe('OpenHypeCollectible', function () {
   });
 
   it('mints single and batched tokens with ERC-5192 lock events', async function () {
-    const { card, asRelayer, user, custody } = f;
+    const { card, asRelayer, user, vault } = f;
     await assert.doesNotReject(asRelayer.mint(user.address, 1n));
-    const tx = await asRelayer.mintBatch(custody.address, [2n, 3n]);
+    const tx = await asRelayer.mintBatch(vault.address, [2n, 3n]);
     const locked = (await tx.wait()).logs.map(l => card.interface.parseLog(l)).filter(l => l?.name === 'Locked');
     assert.deepEqual(locked.map(l => l.args.tokenId), [2n, 3n]);
     assert.equal(await card.ownerOf(1n), user.address);
-    assert.equal(await card.ownerOf(3n), custody.address);
+    assert.equal(await card.ownerOf(3n), vault.address);
     assert.equal(await card.locked(1n), true);
     assert.equal(await card.tokenURI(2n), 'https://meta.example/cards/2');
     await rejects(asRelayer.mint(user.address, 1n), card, 'ERC721InvalidSender');
@@ -81,13 +81,13 @@ describe('OpenHypeCollectible', function () {
     assert.equal(await card.ownerOf(1n), user.address);
   });
 
-  it('lets the operator move cards between custody and holders', async function () {
-    const { card, asRelayer, user, other, custody } = f;
-    await asRelayer.mintBatch(custody.address, [7n]);
-    await asRelayer.operatorTransfer(custody.address, user.address, 7n);
+  it('lets the operator move cards between the vault and holders', async function () {
+    const { card, asRelayer, user, other, vault } = f;
+    await asRelayer.mintBatch(vault.address, [7n]);
+    await asRelayer.operatorTransfer(vault.address, user.address, 7n);
     await asRelayer.operatorTransfer(user.address, other.address, 7n);
     assert.equal(await card.ownerOf(7n), other.address);
-    await rejects(asRelayer.operatorTransfer(user.address, custody.address, 7n), card, 'ERC721IncorrectOwner');
+    await rejects(asRelayer.operatorTransfer(user.address, vault.address, 7n), card, 'ERC721IncorrectOwner');
     await rejects(asRelayer.operatorTransfer(other.address, ethers.ZeroAddress, 7n), card, 'ERC721InvalidReceiver');
   });
 
