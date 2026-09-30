@@ -10,7 +10,7 @@ Each card also exists on chain as an NFT in the **OpenHype Collectibles** collec
 
 - **One token per physical card.** `tokenId` is the card's permanent inventory identity. Token metadata includes the grading company and certificate number, which anyone can check with the grader.
 - **Locked tokens (ERC-5192).** Holders cannot approve or transfer their cards directly. Ownership follows what happens in the OpenHype app, and the platform mirrors it on chain.
-- **Platform-operated moves.** The platform mints a card when it is pulled (or pre-mints vault stock into a custody address), moves it on buyback, battles and trades, and burns it when the physical card is shipped to its owner. A burned `tokenId` can never be minted again.
+- **Platform-operated moves.** The platform mints a card when it is pulled (or pre-mints stock into the platform vault address), moves it on buyback, battles and trades, and burns it when the physical card is shipped to its owner. A burned `tokenId` can never be minted again.
 - **Gasless for users.** The platform sends every transaction and pays the gas.
 - **Holder consent (EIP-712).** A holder can authorize a specific move by signing a `TransferWithAuthorization`, modelled on EIP-3009; the platform relays it.
 - **Collection metadata** is published through `contractURI` (ERC-7572).
