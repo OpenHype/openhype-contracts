@@ -14,6 +14,7 @@ Each card also exists on chain as an NFT in the **OpenHype Collectibles** collec
 - **Gasless for users.** The platform sends every transaction and pays the gas.
 - **Holder consent (EIP-712).** A holder can authorize a specific move by signing a `TransferWithAuthorization`, modelled on EIP-3009; the platform relays it.
 - **Collection metadata** is published through `contractURI` (ERC-7572), set at deployment (`CARD_CONTRACT_URI`).
+- **Collection owner for marketplaces**: `owner()` (EIP-5313, `OwnershipTransferred` events like Ownable) names the account marketplaces let edit the collection page. It grants nothing on chain; the admin sets it with `setOwner` (initialized to the admin).
 - **Metadata refresh** (ERC-4906): `setBaseURI` announces a refresh of every token; the operator or admin can call `refreshMetadata(tokenIds)` or `refreshAllMetadata()` after card images or grades change off chain.
 
 ## Trust model
@@ -28,7 +29,7 @@ The on-chain token mirrors a physical card held by OpenHype, so the platform is 
 
 | Role | Held by | Can |
 | --- | --- | --- |
-| `DEFAULT_ADMIN_ROLE` | admin (multisig on mainnet) | upgrade, grant/revoke roles, pause, set base URI and contract URI, refresh metadata |
+| `DEFAULT_ADMIN_ROLE` | admin (multisig on mainnet) | upgrade, grant/revoke roles, pause, set base URI and contract URI, refresh metadata, `setOwner` |
 | `MINTER_ROLE` | platform relayer | `mint`, `mintBatch` |
 | `OPERATOR_ROLE` | platform relayer | `operatorTransfer`, `burn`, relay `transferWithAuthorization`, `refreshMetadata` / `refreshAllMetadata` |
 

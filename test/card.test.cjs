@@ -152,6 +152,38 @@ describe('OpenHypeCollectible', function () {
     assert.ok(receipt.logs.some(l => card.interface.parseLog(l)?.name === 'ContractURIUpdated'));
   });
 
+  it('exposes a display owner for marketplaces, set to the admin at initialization', async function () {
+    const { card, admin } = f;
+    assert.equal(await card.owner(), admin.address);
+    const deployed = await ethers.provider.getTransactionReceipt(card.deploymentTransaction().hash);
+    const moved = deployed.logs.map(l => card.interface.parseLog(l)).find(l => l?.name === 'OwnershipTransferred');
+    assert.deepEqual([...moved.args], [ethers.ZeroAddress, admin.address]);
+  });
+
+  it('lets only the admin change the owner, which grants nothing on chain', async function () {
+    const { card, admin, relayer, other } = f;
+    await rejects(card.connect(other).setOwner(other.address), card, 'AccessControlUnauthorizedAccount');
+    await rejects(card.connect(relayer).setOwner(relayer.address), card, 'AccessControlUnauthorizedAccount');
+    const receipt = await (await card.setOwner(other.address)).wait();
+    assert.equal(await card.owner(), other.address);
+    const moved = receipt.logs.map(l => card.interface.parseLog(l)).find(l => l?.name === 'OwnershipTransferred');
+    assert.deepEqual([...moved.args], [admin.address, other.address]);
+    // The owner is display only: no admin, minter or operator power comes with it.
+    await rejects(card.connect(other).setOwner(other.address), card, 'AccessControlUnauthorizedAccount');
+    await rejects(card.connect(other).pause(), card, 'AccessControlUnauthorizedAccount');
+    await rejects(card.connect(other).setContractURI('x'), card, 'AccessControlUnauthorizedAccount');
+    await rejects(card.connect(other).refreshAllMetadata(), card, 'AccessControlUnauthorizedAccount');
+    await rejects(card.connect(other).mint(other.address, 1n), card, 'AccessControlUnauthorizedAccount');
+  });
+
+  it('sets the owner of an already deployed proxy inside the upgrade transaction', async function () {
+    const { card, other } = f;
+    const V2 = await ethers.getContractFactory('OpenHypeCollectibleV2Mock');
+    const upgraded = await upgrades.upgradeProxy(await card.getAddress(), V2, { call: { fn: 'setOwner', args: [other.address] } });
+    assert.equal(await upgraded.owner(), other.address);
+    assert.equal(await upgraded.version(), 2n);
+  });
+
   it('announces metadata refreshes (ERC-4906) from the operator or the admin only', async function () {
     const { card, asRelayer, other } = f;
     const events = async tx => (await (await tx).wait()).logs.map(l => card.interface.parseLog(l)).filter(Boolean);

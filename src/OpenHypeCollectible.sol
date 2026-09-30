@@ -63,6 +63,8 @@ contract OpenHypeCollectible is
     /// @notice Whether an authorizer's nonce was used or cancelled (EIP-3009 semantics).
     mapping(address => mapping(bytes32 => bool)) public authorizationState;
     string private contractURI_;
+    /// @dev Display owner for marketplaces (`owner()`); grants nothing on chain.
+    address private owner_;
 
     error NonTransferable();
     error TokenBurned(uint256 tokenId);
@@ -77,6 +79,8 @@ contract OpenHypeCollectible is
     event AuthorizationCanceled(address indexed authorizer, bytes32 indexed nonce);
     /// @dev ERC-7572
     event ContractURIUpdated();
+    /// @dev Same signature as Ownable / ERC-173, so marketplaces index owner changes.
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     /// @dev ERC-4906
     event MetadataUpdate(uint256 _tokenId);
     event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
@@ -103,6 +107,7 @@ contract OpenHypeCollectible is
         baseURI_ = uri;
         contractURI_ = collectionURI;
         emit ContractURIUpdated();
+        _setOwner(admin);
     }
 
     // ---------------------------------------------------------------- platform moves
@@ -213,6 +218,17 @@ contract OpenHypeCollectible is
         emit BatchMetadataUpdate(0, type(uint256).max);
     }
 
+    /// @notice The account marketplaces treat as the collection's owner (EIP-5313 `owner()`), e.g. to edit
+    /// the collection page. It grants no permission in this contract: DEFAULT_ADMIN_ROLE holds all control
+    /// and decides who the owner is.
+    function owner() external view returns (address) {
+        return owner_;
+    }
+
+    function setOwner(address newOwner) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setOwner(newOwner);
+    }
+
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
@@ -252,6 +268,11 @@ contract OpenHypeCollectible is
         if (burned[tokenId]) revert TokenBurned(tokenId);
         _mint(to, tokenId);
         emit Locked(tokenId);
+    }
+
+    function _setOwner(address newOwner) private {
+        emit OwnershipTransferred(owner_, newOwner);
+        owner_ = newOwner;
     }
 
     function _useAuthorization(address authorizer, bytes32 nonce) private {
