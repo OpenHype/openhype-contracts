@@ -33,6 +33,14 @@ describe('mainnet deployment guard', function () {
     assert.ok(mainnetDeployProblems({ ...ok, admin: ok.deployer }).includes('deployer must not be the admin'));
     assert.ok(mainnetDeployProblems({ ...ok, relayer: ok.deployer }).includes('deployer must not be the relayer'));
   });
+  it('lets the deployer be an EOA admin only when both are explicitly allowed, never the relayer', function () {
+    const eoaDeployerAdmin = { ...ok, admin: ok.deployer, adminCode: '0x' };
+    assert.ok(mainnetDeployProblems({ ...eoaDeployerAdmin, allowEoaAdmin: true }).includes('deployer must not be the admin'));
+    assert.deepEqual(mainnetDeployProblems({ ...eoaDeployerAdmin, allowEoaAdmin: true, allowDeployerAdmin: true }), []);
+    assert.ok(
+      mainnetDeployProblems({ ...ok, relayer: ok.deployer, allowDeployerAdmin: true }).includes('deployer must not be the relayer'),
+    );
+  });
   it('refuses a dev, testnet, local or plain-http metadata URI', function () {
     for (const baseURI of [
       'https://api-dev.openhype.com/v1/nft_metadata/asset/',

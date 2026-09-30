@@ -37,6 +37,7 @@ async function main() {
         adminCode: await ethers.provider.getCode(admin),
         testnet: defaultTestnetAddresses(path.resolve(__dirname, '..')),
         allowEoaAdmin: process.env.ALLOW_EOA_ADMIN === 'yes',
+        allowDeployerAdmin: process.env.ALLOW_DEPLOYER_ADMIN === 'yes',
       });
       if (problems.length) throw new Error(`Refusing the mainnet deployment:\n- ${problems.join('\n- ')}`);
       if (process.env.CONFIRM_MAINNET !== 'yes')
