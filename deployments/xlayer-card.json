@@ -7,5 +7,14 @@
   "relayer": "0x857DC153120f6466D5125D5cb8d754B1930c6139",
   "baseURI": "https://api-prod.openhype.com/v1/nft_metadata/asset/",
   "contractURI": "https://api-prod.openhype.com/v1/nft_metadata/contract",
-  "implementation": "0x8eBa6122923492089B305d784DCE35dB1D4419A9"
+  "implementation": "0xadb65A838A249E96a6A1bE3d40E9487118cC52eb",
+  "upgrades": [
+    {
+      "at": "2026-09-30T10:48:24.364Z",
+      "from": "0x8eBa6122923492089B305d784DCE35dB1D4419A9",
+      "to": "0xadb65A838A249E96a6A1bE3d40E9487118cC52eb",
+      "setOwner": "0x0523C5AfE2380f4b2d1237BF130109E7d069994D",
+      "change": "owner() for marketplaces (display only), set by the admin; OwnershipTransferred events"
+    }
+  ]
 }
