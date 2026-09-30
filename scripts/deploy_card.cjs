@@ -60,7 +60,11 @@ async function main() {
     // Journal the proxy before waiting, so an interrupted run can reattach instead of redeploying.
     save(file, report);
     await card.waitForDeployment();
-    report.implementation = await upgrades.erc1967.getImplementationAddress(report.proxy);
+  }
+
+  if (!report.implementation) {
+    // Load-balanced RPCs can serve a node that has not seen the proxy yet: retry the read, then journal it.
+    report.implementation = await readImplementation(report.proxy);
     save(file, report);
   }
 
@@ -73,6 +77,17 @@ async function main() {
   assert.equal(await card.paused(), false);
   if (report.contractURI) assert.equal(await card.contractURI(), report.contractURI, 'contractURI');
   console.log(JSON.stringify(report, null, 2));
+}
+
+async function readImplementation(proxy) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await upgrades.erc1967.getImplementationAddress(proxy);
+    } catch (error) {
+      if (attempt >= 30) throw error;
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
 }
 
 function requireEnv(name) {
