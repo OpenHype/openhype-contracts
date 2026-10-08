@@ -1,0 +1,49 @@
+{
+  "chainId": 1952,
+  "proxy": "0xD21a980E70d6663a49715Be2E39b068AfF56f11B",
+  "deployTx": "0x580b78e0e147c71d05fb1ff7b1eedbfc7c6cd5b2de9df085feb5c09d5abcc257",
+  "admin": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
+  "relayer": "0xB8E33FAbF9cAF7AA6b83D7DE8c044CCFbf9C03b7",
+  "baseURI": "https://api-dev.openhype.com/v1/nft_metadata/asset/",
+  "implementation": "0x04f8038Bff72fb516d65D96E1694869cB14b31AE",
+  "upgrades": [
+    {
+      "at": "2026-09-23T10:34:30.599Z",
+      "from": "0x7dc2EA8CeddEeC4C6d740Cc19D3f98f97fD24Bc4",
+      "to": "0xe297A542e75cBC98B9840C00a6e8113368c692DF",
+      "change": "EIP-712 domain, transferWithAuthorization, cancelAuthorization"
+    },
+    {
+      "at": "2026-09-23T11:04:26.906Z",
+      "from": "0xe297A542e75cBC98B9840C00a6e8113368c692DF",
+      "to": "0x60a2cDb59CD6d8CC2Ca70E17cCEA853B6992C0c5",
+      "change": "ERC-7572 contractURI"
+    },
+    {
+      "at": "2026-09-24T01:52:09.993Z",
+      "from": "0x60a2cDb59CD6d8CC2Ca70E17cCEA853B6992C0c5",
+      "to": "0x4b1726d57BD954c0F4B413D0CaB3C87548C6FC4a",
+      "change": "ECDSA-first signature check (EIP-7702 wallets), security contact"
+    },
+    {
+      "at": "2026-09-24T08:08:09.137Z",
+      "from": "0x4b1726d57BD954c0F4B413D0CaB3C87548C6FC4a",
+      "to": "0x78F473E7a9EC12DE22Fa4f25cB7f57ACA8f688ea",
+      "change": "Renamed to OpenHypeCollectible; name/symbol/EIP-712 domain \"OpenHype Collectibles\" / \"OHC\""
+    },
+    {
+      "at": "2026-09-30T04:11:08.352Z",
+      "from": "0x78F473E7a9EC12DE22Fa4f25cB7f57ACA8f688ea",
+      "to": "0xe1da8f177188809EBf7FE32660e2e8bb7ed769B4",
+      "change": "ERC-4906 metadata refresh (refreshMetadata / refreshAllMetadata, setBaseURI event); initialize takes contractURI"
+    },
+    {
+      "at": "2026-09-30T10:43:05.965Z",
+      "from": "0xe1da8f177188809EBf7FE32660e2e8bb7ed769B4",
+      "to": "0x04f8038Bff72fb516d65D96E1694869cB14b31AE",
+      "setOwner": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
+      "change": "owner() for marketplaces (display only), set by the admin; OwnershipTransferred events"
+    }
+  ],
+  "contractURI": "https://api-dev.openhype.com/v1/nft_metadata/contract"
+}

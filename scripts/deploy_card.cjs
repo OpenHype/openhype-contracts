@@ -1,0 +1,108 @@
+// Deploys the OpenHypeCollectible UUPS proxy. The deployer only pays gas: admin and relayer come
+// from the environment and the deployer keeps no role unless it is explicitly the admin.
+// Resumable: an existing report is verified, never redeployed.
+// Mainnet (network xlayer, hardhat.mainnet.config.cjs) runs lib/mainnet_guard.cjs first and needs
+// CONFIRM_MAINNET=yes after the printed plan.
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const { ethers, upgrades, network } = require('hardhat');
+const { defaultTestnetAddresses, mainnetDeployProblems } = require('../lib/mainnet_guard.cjs');
+
+const CHAINS = { xlayerTestnet: 1952n, xlayer: 196n };
+const MAINNET = 196n;
+
+async function main() {
+  const chainId = CHAINS[network.name];
+  if (!chainId || (await ethers.provider.getNetwork()).chainId !== chainId)
+    throw new Error(`Unsupported network ${network.name}`);
+  const admin = ethers.getAddress(requireEnv('CARD_ADMIN_ADDRESS'));
+  const relayer = ethers.getAddress(requireEnv('CARD_RELAYER_ADDRESS'));
+  const baseURI = requireEnv('CARD_BASE_URI');
+  const contractURI = requireEnv('CARD_CONTRACT_URI');
+  if (admin === relayer) throw new Error('Admin and relayer must be different keys');
+  const [deployer] = await ethers.getSigners();
+
+  const file = path.resolve(__dirname, `../deployments/${network.name}-card.json`);
+  const Card = await ethers.getContractFactory('OpenHypeCollectible');
+  await upgrades.validateImplementation(Card, { kind: 'uups' });
+
+  let report = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
+  if (!report) {
+    const plan = { chainId: Number(chainId), deployer: deployer.address, admin, relayer, baseURI, contractURI };
+    console.log(JSON.stringify(plan));
+    if (chainId === MAINNET) {
+      const problems = mainnetDeployProblems({
+        ...plan,
+        adminCode: await ethers.provider.getCode(admin),
+        testnet: defaultTestnetAddresses(path.resolve(__dirname, '..')),
+        allowEoaAdmin: process.env.ALLOW_EOA_ADMIN === 'yes',
+        allowDeployerAdmin: process.env.ALLOW_DEPLOYER_ADMIN === 'yes',
+      });
+      if (problems.length) throw new Error(`Refusing the mainnet deployment:\n- ${problems.join('\n- ')}`);
+      if (process.env.CONFIRM_MAINNET !== 'yes')
+        throw new Error('Mainnet plan above passed the checks. Re-run with CONFIRM_MAINNET=yes to deploy.');
+    }
+    const card = await upgrades.deployProxy(Card, [admin, relayer, baseURI, contractURI], {
+      kind: 'uups',
+      timeout: 120000,
+    });
+    report = {
+      chainId: Number(chainId),
+      proxy: await card.getAddress(),
+      deployTx: card.deploymentTransaction().hash,
+      deployer: deployer.address,
+      admin,
+      relayer,
+      baseURI,
+      contractURI,
+    };
+    // Journal the proxy before waiting, so an interrupted run can reattach instead of redeploying.
+    save(file, report);
+    await card.waitForDeployment();
+  }
+
+  if (!report.implementation) {
+    // Load-balanced RPCs can serve a node that has not seen the proxy yet: retry the read, then journal it.
+    report.implementation = await readImplementation(report.proxy);
+    save(file, report);
+  }
+
+  const card = Card.attach(report.proxy);
+  assert.equal(await card.hasRole(await card.DEFAULT_ADMIN_ROLE(), report.admin), true, 'admin role');
+  assert.equal(await card.hasRole(await card.MINTER_ROLE(), report.relayer), true, 'minter role');
+  assert.equal(await card.hasRole(await card.OPERATOR_ROLE(), report.relayer), true, 'operator role');
+  if (deployer.address !== report.admin)
+    assert.equal(await card.hasRole(await card.DEFAULT_ADMIN_ROLE(), deployer.address), false, 'deployer holds no role');
+  assert.equal(await card.paused(), false);
+  if (report.contractURI) assert.equal(await card.contractURI(), report.contractURI, 'contractURI');
+  console.log(JSON.stringify(report, null, 2));
+}
+
+async function readImplementation(proxy) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await upgrades.erc1967.getImplementationAddress(proxy);
+    } catch (error) {
+      if (attempt >= 30) throw error;
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+}
+
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Set ${name}`);
+  return value;
+}
+
+function save(file, report) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(`${file}.tmp`, JSON.stringify(report, null, 2) + '\n');
+  fs.renameSync(`${file}.tmp`, file);
+}
+
+main().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

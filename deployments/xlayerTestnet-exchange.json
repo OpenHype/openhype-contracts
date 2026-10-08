@@ -1,0 +1,46 @@
+{
+  "chainId": 1952,
+  "proxy": "0x9F07a7408D03d90f7Ee77E51F2B4FcBf18ea5A21",
+  "deployTx": "0x841e3205d76619715a233f7658e501b183d403df889d607e23dfb4854182e825",
+  "deployer": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
+  "admin": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
+  "operator": "0xB8E33FAbF9cAF7AA6b83D7DE8c044CCFbf9C03b7",
+  "taker": "0x3E7B1778eAabe71100C7e584a10bE4ae9a8e24Df",
+  "collection": "0xD21a980E70d6663a49715Be2E39b068AfF56f11B",
+  "inventory": "0x5AF09cF7B58B4Ac2D5BcFbbf73E93064A5334BD1",
+  "proceedsRecipient": "0x3E7B1778eAabe71100C7e584a10bE4ae9a8e24Df",
+  "currencies": [
+    "0x9e29b3AaDa05Bf2D2c827Af80Bd28Dc0b9b4FB0c"
+  ],
+  "takerLimits": [
+    {
+      "currency": "0x9e29b3AaDa05Bf2D2c827Af80Bd28Dc0b9b4FB0c",
+      "maxPerFill": "1000000000",
+      "maxPerWindow": "1500000000",
+      "window": 3600
+    }
+  ],
+  "implementation": "0x69253F9443e9DcB2CfebF151f2399a39fA96E3ec",
+  "upgrades": [
+    {
+      "at": "2026-10-01T15:30:38.004Z",
+      "from": "0x1458F3b598c2bFEE31560078db45EcAC19796E1c",
+      "to": "0x70f71f20A7dbE5275d85683dEe46135990e4c046"
+    },
+    {
+      "at": "2026-10-04T06:22:39.308Z",
+      "from": "0x70f71f20A7dbE5275d85683dEe46135990e4c046",
+      "to": "0x8a989c5FC62a5a330c5c97f5651bf050dB5DE681"
+    },
+    {
+      "at": "2026-10-04T07:46:14.533Z",
+      "from": "0x8a989c5FC62a5a330c5c97f5651bf050dB5DE681",
+      "to": "0xc052629724bBCe813eAF276e4b74Cf825667e0e4"
+    },
+    {
+      "at": "2026-10-08T03:10:07.284Z",
+      "from": "0xc052629724bBCe813eAF276e4b74Cf825667e0e4",
+      "to": "0x69253F9443e9DcB2CfebF151f2399a39fA96E3ec"
+    }
+  ]
+}

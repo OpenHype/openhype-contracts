@@ -1,0 +1,38 @@
+{
+  "chainId": 196,
+  "proxy": "0x8784607C6253EF77f16a361688f8767b3cDf9568",
+  "deployTx": "0x05353e2be8da79cf90742b586906e8defd5d067172458d18df43cc190ade29f0",
+  "deployer": "0x0523C5AfE2380f4b2d1237BF130109E7d069994D",
+  "admin": "0x0523C5AfE2380f4b2d1237BF130109E7d069994D",
+  "operator": "0x857DC153120f6466D5125D5cb8d754B1930c6139",
+  "taker": "0xd04dC09707Cb35bB85DC672A60482f9220CF8b3c",
+  "collection": "0xe0FBefbc7c2A5A793b15D51E552Ad142493c7294",
+  "inventory": "0x6F3260e1E1a0FdaA6Bd1315E96a526adF5dfAb11",
+  "proceedsRecipient": "0xd04dC09707Cb35bB85DC672A60482f9220CF8b3c",
+  "currencies": [
+    "0x779Ded0c9e1022225f8E0630b35a9b54bE713736"
+  ],
+  "takerLimits": [
+    {
+      "currency": "0x779Ded0c9e1022225f8E0630b35a9b54bE713736",
+      "maxPerFill": "1000000000",
+      "maxPerWindow": "3000000000",
+      "window": 3600
+    }
+  ],
+  "implementation": "0xF32e0aF204b8C52bAAb077aC9393Ee4b88E73A77",
+  "collectionRoles": {
+    "granted": "2026-10-04",
+    "by": "0x0523C5AfE2380f4b2d1237BF130109E7d069994D",
+    "MINTER_ROLE": "0x0a4b566bae370ead8dd255d51910fa10e3cf597cfbe54d7e22f91f5d7cdd83e5",
+    "OPERATOR_ROLE": "0x7e32af32f0326fde6a8c62eb5c9af413bdbe6b13f029e4798b6397943853758e"
+  },
+  "oklinkVerified": "2026-10-04",
+  "upgrades": [
+    {
+      "at": "2026-10-08T03:24:33.434Z",
+      "from": "0x6059db30ed405e30E70C813E06D81E25375dd57b",
+      "to": "0xF32e0aF204b8C52bAAb077aC9393Ee4b88E73A77"
+    }
+  ]
+}
