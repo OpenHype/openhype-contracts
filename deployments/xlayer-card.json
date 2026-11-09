@@ -3,11 +3,11 @@
   "proxy": "0xe0FBefbc7c2A5A793b15D51E552Ad142493c7294",
   "deployTx": "0x0ea0a6947d0ff925bc3a312c79c1c015c59b48eb3f970257cd5647809de48344",
   "deployer": "0x0523C5AfE2380f4b2d1237BF130109E7d069994D",
-  "admin": "0x0523C5AfE2380f4b2d1237BF130109E7d069994D",
+  "admin": "0x0AA376b8b03537f6aB0893EdFc64bF44257A0Cb8",
   "relayer": "0x857DC153120f6466D5125D5cb8d754B1930c6139",
   "baseURI": "https://api-prod.openhype.com/v1/nft_metadata/asset/",
   "contractURI": "https://api-prod.openhype.com/v1/nft_metadata/contract",
-  "implementation": "0xadb65A838A249E96a6A1bE3d40E9487118cC52eb",
+  "implementation": "0xD73E2680029704227Ee9f84d384a10f15b76De40",
   "upgrades": [
     {
       "at": "2026-09-30T10:48:24.364Z",
@@ -15,6 +15,26 @@
       "to": "0xadb65A838A249E96a6A1bE3d40E9487118cC52eb",
       "setOwner": "0x0523C5AfE2380f4b2d1237BF130109E7d069994D",
       "change": "owner() for marketplaces (display only), set by the admin; OwnershipTransferred events"
+    },
+    {
+      "at": "2026-11-09T15:22:34.625Z",
+      "from": "0xadb65A838A249E96a6A1bE3d40E9487118cC52eb",
+      "to": "0xD73E2680029704227Ee9f84d384a10f15b76De40"
+    }
+  ],
+  "adminHistory": [
+    {
+      "at": "2026-11-09T15:25:01.024Z",
+      "from": "0x0523C5AfE2380f4b2d1237BF130109E7d069994D",
+      "to": "0x0AA376b8b03537f6aB0893EdFc64bF44257A0Cb8",
+      "safeTestTxs": [
+        "0xbfb37cdf208785bf5f01cd10a6520d67c64f712afb5394e284f2ac945b943b05",
+        "0xb3c99060563749f643bc4817a11c98d8595ccffd171d0230f82ca5b722d1c403"
+      ],
+      "renounceTxs": [
+        "0xea59fd088f207da44bbef101b96cf2980ee847545aeaef7f3f760dedf78f7496",
+        "0xbe7fc6201bf083f5193a5eb035568a83ad4da2c9051ae8bf4b54754a56f99033"
+      ]
     }
   ]
 }

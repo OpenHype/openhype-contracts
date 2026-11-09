@@ -1,5 +1,6 @@
 // Forks X Layer (FORK_CHAIN_ID 196 or 1952, FORK_RPC_URL https) into the in-process Hardhat network so
-// scripts can run against the real tokens and collection without sending anything.
+// scripts can run against the real tokens and collection without sending anything. FORK_BLOCK_NUMBER pins the block
+// (Hardhat otherwise forks some blocks behind the head on chains it does not know).
 const base = require('./hardhat.config.cjs');
 
 const url = process.env.FORK_RPC_URL;
@@ -13,7 +14,7 @@ module.exports = {
     hardhat: {
       ...base.networks.hardhat,
       chainId,
-      forking: { url },
+      forking: { url, ...(process.env.FORK_BLOCK_NUMBER ? { blockNumber: Number(process.env.FORK_BLOCK_NUMBER) } : {}) },
       // X Layer executes Cancun opcodes; Hardhat needs the hardfork to replay the forked state.
       hardfork: 'cancun',
       chains: { [chainId]: { hardforkHistory: { cancun: 0 } } },

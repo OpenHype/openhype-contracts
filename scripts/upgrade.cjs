@@ -2,11 +2,11 @@
 // card (OpenHypeCollectible, the default) or exchange (OpenHypeExchange).
 // The OZ plugin validates storage-layout compatibility against .openzeppelin/ before sending anything.
 //
-// Testnet: the signer holds DEFAULT_ADMIN_ROLE and upgrades directly.
+// Testnet, EOA admin: the signer holds DEFAULT_ADMIN_ROLE and upgrades directly.
 // Mainnet (network xlayer), EOA admin: the signer must be that admin; upgrades directly after
 // CONFIRM_MAINNET=yes.
-// Mainnet, Safe admin: deploys and validates the new implementation (prepareUpgrade), records it as
-// pendingUpgrade and prints the Safe transaction to execute. Run it again after the Safe executed: it
+// Safe admin, on either network: deploys and validates the new implementation (prepareUpgrade), records it
+// as pendingUpgrade and prints the Safe transaction to execute. Run it again after the Safe executed: it
 // confirms the proxy moved and records the upgrade.
 // REDEPLOY_IMPLEMENTATION=yes deploys a new implementation even when only comments changed (the plugin
 // compares bytecode without metadata), so the verified source matches the repository.
@@ -29,10 +29,10 @@ async function main() {
   if (process.env.CARD_SET_OWNER && TARGET !== 'card') throw new Error('CARD_SET_OWNER applies to the card only');
   const owner = process.env.CARD_SET_OWNER ? ethers.getAddress(process.env.CARD_SET_OWNER) : null;
   const call = owner ? { fn: 'setOwner', args: [owner] } : undefined;
+  const adminIsEoa = (await ethers.provider.getCode(report.admin)) === '0x';
+  if (!adminIsEoa) return proposeViaSafe(file, report, Card, before, call);
   if (chainId === MAINNET) {
     const [signer] = await ethers.getSigners();
-    const adminIsEoa = (await ethers.provider.getCode(report.admin)) === '0x';
-    if (!adminIsEoa) return proposeViaSafe(file, report, Card, before, call);
     if (signer.address !== report.admin) throw new Error(`The admin ${report.admin} is an EOA: sign with it (signer is ${signer.address})`);
     console.log(JSON.stringify({ proxy: report.proxy, admin: report.admin, from: before, setOwner: owner }));
     if (process.env.CONFIRM_MAINNET !== 'yes') throw new Error('Re-run with CONFIRM_MAINNET=yes to upgrade the mainnet proxy.');
@@ -77,6 +77,10 @@ async function proposeViaSafe(file, report, Card, current, call) {
   }
   const redeployImplementation = process.env.REDEPLOY_IMPLEMENTATION === 'yes' ? 'always' : 'onchange';
   const implementation = await upgrades.prepareUpgrade(report.proxy, Card, { kind: 'uups', timeout: 120000, redeployImplementation });
+  if (implementation.toLowerCase() === current.toLowerCase() && !call) {
+    console.log(JSON.stringify({ proxy: report.proxy, unchanged: true, implementation: current }, null, 2));
+    return;
+  }
   const init = call ? Card.interface.encodeFunctionData(call.fn, call.args) : '0x';
   const data = Card.interface.encodeFunctionData('upgradeToAndCall', [implementation, init]);
   report.pendingUpgrade = { at: new Date().toISOString(), from: current, to: implementation };

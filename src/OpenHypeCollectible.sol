@@ -11,13 +11,13 @@ pragma solidity 0.8.30;
  *
  *  OpenHype Collectibles
  *
- *  Every token is one graded physical trading card held in the OpenHype vault.
+ *  Every token is one physical trading card held in the OpenHype vault.
  *  tokenId is the card's permanent inventory identity.
  *
  *  - Cards are locked (ERC-5192): holders cannot approve or transfer them directly.
  *  - The platform mirrors ownership from the OpenHype app: it mints when a card is
- *    drawn or pre-minted into custody, moves it on buyback, battles and marketplace
- *    trades, and burns it when the physical card is shipped to its owner.
+ *    delivered to a collector or pre-minted into the inventory, moves it whenever it changes
+ *    hands in the app, and burns it when the physical card is shipped to its owner.
  *  - A holder can consent to a move by signing an EIP-712 TransferWithAuthorization
  *    (modelled on EIP-3009); the platform relays it and pays the gas.
  *  - A burned tokenId can never be minted again. A tokenId stands for one stay of the card
@@ -25,6 +25,8 @@ pragma solidity 0.8.30;
  *  - Token metadata includes the grading certificate, verifiable with the grader;
  *    collection metadata is published through contractURI (ERC-7572), and metadata
  *    changes are announced with ERC-4906 events.
+ *  - A card's identity and grading can be recorded on chain once (CardRecorded), so they stay
+ *    fixed whatever the metadata later says; only the admin can correct a record (CardCorrected).
  */
 
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
@@ -50,6 +52,8 @@ contract OpenHypeCollectible is
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+    /// @notice Can pause but not unpause: a fast emergency stop that does not wait for the admin.
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     bytes32 public constant TRANSFER_WITH_AUTHORIZATION_TYPEHASH = keccak256(
         "TransferWithAuthorization(address from,address to,uint256 tokenId,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
@@ -65,6 +69,17 @@ contract OpenHypeCollectible is
     string private contractURI_;
     /// @dev Display owner for marketplaces (`owner()`); grants nothing on chain.
     address private owner_;
+    /// @notice keccak256(abi.encode(card, grader, certNumber, grade)) of a token's card record; zero until recorded.
+    mapping(uint256 => bytes32) public cardRecordHash;
+
+    /// @notice What a token stands for: `card` identifies the card in one readable string (e.g. game | set | number |
+    /// name | language | variant); `grader`, `certNumber` and `grade` are set for a graded card and empty otherwise.
+    struct CardRecord {
+        string card;
+        string grader;
+        string certNumber;
+        string grade;
+    }
 
     error NonTransferable();
     error TokenBurned(uint256 tokenId);
@@ -72,6 +87,10 @@ contract OpenHypeCollectible is
     error AuthorizationExpired();
     error AuthorizationUsedOrCanceled(address authorizer, bytes32 nonce);
     error InvalidSignature();
+    error LengthMismatch();
+    error InvalidCardRecord(uint256 tokenId);
+    error CardAlreadyRecorded(uint256 tokenId);
+    error CardNotRecorded(uint256 tokenId);
 
     /// @dev ERC-5192
     event Locked(uint256 tokenId);
@@ -84,6 +103,10 @@ contract OpenHypeCollectible is
     /// @dev ERC-4906
     event MetadataUpdate(uint256 _tokenId);
     event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
+    /// @notice A token's card record, written once: verify a graded card's `certNumber` with its `grader`.
+    event CardRecorded(uint256 indexed tokenId, string card, string grader, string certNumber, string grade);
+    /// @notice The admin replaced a token's card record; the earlier CardRecorded / CardCorrected stays on chain.
+    event CardCorrected(uint256 indexed tokenId, string card, string grader, string certNumber, string grade);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -116,7 +139,7 @@ contract OpenHypeCollectible is
         _mintLocked(to, tokenId);
     }
 
-    /// @notice Pre-mints inventory, usually into the custody address.
+    /// @notice Pre-mints tokens, usually into the inventory address.
     function mintBatch(address to, uint256[] calldata tokenIds) external onlyRole(MINTER_ROLE) whenNotPaused {
         for (uint256 i = 0; i < tokenIds.length; i++) _mintLocked(to, tokenIds[i]);
     }
@@ -129,6 +152,33 @@ contract OpenHypeCollectible is
     function burn(uint256 tokenId) external onlyRole(OPERATOR_ROLE) whenNotPaused {
         _burn(tokenId);
         burned[tokenId] = true;
+    }
+
+    // ---------------------------------------------------------------- card records
+
+    /// @notice Records what each token stands for, once per token: a token that already has a record reverts.
+    /// The token must exist or have been burned (a record can be added for a card already shipped).
+    function recordCards(uint256[] calldata tokenIds, CardRecord[] calldata records)
+        external
+        onlyRole(OPERATOR_ROLE)
+        whenNotPaused
+    {
+        if (tokenIds.length != records.length) revert LengthMismatch();
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            if (cardRecordHash[tokenId] != 0) revert CardAlreadyRecorded(tokenId);
+            if (_ownerOf(tokenId) == address(0) && !burned[tokenId]) revert ERC721NonexistentToken(tokenId);
+            CardRecord calldata r = records[i];
+            cardRecordHash[tokenId] = _cardRecordHash(tokenId, r);
+            emit CardRecorded(tokenId, r.card, r.grader, r.certNumber, r.grade);
+        }
+    }
+
+    /// @notice Replaces a token's card record, e.g. a certificate number entered wrongly. Admin only.
+    function correctCard(uint256 tokenId, CardRecord calldata record) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (cardRecordHash[tokenId] == 0) revert CardNotRecorded(tokenId);
+        cardRecordHash[tokenId] = _cardRecordHash(tokenId, record);
+        emit CardCorrected(tokenId, record.card, record.grader, record.certNumber, record.grade);
     }
 
     // ---------------------------------------------------------------- holder consent
@@ -229,7 +279,8 @@ contract OpenHypeCollectible is
         _setOwner(newOwner);
     }
 
-    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    /// @notice Stops every platform move. A pauser or the admin can pause; only the admin unpauses.
+    function pause() external onlyPauserOrAdmin {
         _pause();
     }
 
@@ -264,10 +315,23 @@ contract OpenHypeCollectible is
         _;
     }
 
+    modifier onlyPauserOrAdmin() {
+        if (!hasRole(PAUSER_ROLE, _msgSender())) _checkRole(DEFAULT_ADMIN_ROLE);
+        _;
+    }
+
     function _mintLocked(address to, uint256 tokenId) private {
         if (burned[tokenId]) revert TokenBurned(tokenId);
         _mint(to, tokenId);
         emit Locked(tokenId);
+    }
+
+    /// @dev A card is always identified; a grading names both its grader and its certificate, and a grade only with them.
+    function _cardRecordHash(uint256 tokenId, CardRecord calldata r) private pure returns (bytes32) {
+        bool graded = bytes(r.grader).length > 0;
+        if (bytes(r.card).length == 0 || graded != (bytes(r.certNumber).length > 0) || (!graded && bytes(r.grade).length > 0))
+            revert InvalidCardRecord(tokenId);
+        return keccak256(abi.encode(r.card, r.grader, r.certNumber, r.grade));
     }
 
     function _setOwner(address newOwner) private {

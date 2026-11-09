@@ -2,10 +2,10 @@
   "chainId": 1952,
   "proxy": "0xD21a980E70d6663a49715Be2E39b068AfF56f11B",
   "deployTx": "0x580b78e0e147c71d05fb1ff7b1eedbfc7c6cd5b2de9df085feb5c09d5abcc257",
-  "admin": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
+  "admin": "0x42a45E853A8674d4faA6ED62DDDd4943046Da19a",
   "relayer": "0xB8E33FAbF9cAF7AA6b83D7DE8c044CCFbf9C03b7",
   "baseURI": "https://api-dev.openhype.com/v1/nft_metadata/asset/",
-  "implementation": "0x04f8038Bff72fb516d65D96E1694869cB14b31AE",
+  "implementation": "0xC43C74A7F3D966B052942D369d93c07F318a0Bbd",
   "upgrades": [
     {
       "at": "2026-09-23T10:34:30.599Z",
@@ -43,7 +43,33 @@
       "to": "0x04f8038Bff72fb516d65D96E1694869cB14b31AE",
       "setOwner": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
       "change": "owner() for marketplaces (display only), set by the admin; OwnershipTransferred events"
+    },
+    {
+      "at": "2026-11-04T10:06:08.671Z",
+      "from": "0x04f8038Bff72fb516d65D96E1694869cB14b31AE",
+      "to": "0x55E7dc63131d986F54C8eC7BAc00ceB3c66CD903"
+    },
+    {
+      "at": "2026-11-04T10:21:43.424Z",
+      "from": "0x55E7dc63131d986F54C8eC7BAc00ceB3c66CD903",
+      "to": "0xC43C74A7F3D966B052942D369d93c07F318a0Bbd",
+      "via": "safe"
     }
   ],
-  "contractURI": "https://api-dev.openhype.com/v1/nft_metadata/contract"
+  "contractURI": "https://api-dev.openhype.com/v1/nft_metadata/contract",
+  "adminHistory": [
+    {
+      "at": "2026-11-04T10:11:08.867Z",
+      "from": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
+      "to": "0x42a45E853A8674d4faA6ED62DDDd4943046Da19a",
+      "safeTestTxs": [
+        "0x79f5662b00ad71ed5148ebf0dc55c26949fac4424121dd499fcd19946ee7db0e",
+        "0x9a92dc39e1f4847471cd6525347790ba50a0fcdc52ddd3c7a68e7f4174e57bce"
+      ],
+      "renounceTxs": [
+        "0x2fa6d482932dbb6039f4b0d7d2d26cb3e5e2ff3b3cc85811b8e3508d41c518ed",
+        "0x02936214fc9762aad5bea3ef10fe7006aca1cc9098a4c9d0612cb0f1dd15c805"
+      ]
+    }
+  ]
 }

@@ -13,4 +13,4 @@ Include the affected contract and function, the network and address if deployed,
 
 ## Status
 
-The contracts have not been audited yet.
+The contracts have not been audited yet. Privileged roles and what they can do are described in the README's trust model.

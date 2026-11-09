@@ -23,6 +23,8 @@
     "upgrade:card:mainnet": "hardhat run --config hardhat.mainnet.config.cjs --network xlayer scripts/upgrade.cjs",
     "upgrade:exchange:testnet": "UPGRADE_TARGET=exchange hardhat run --config hardhat.testnet.config.cjs --network xlayerTestnet scripts/upgrade.cjs",
     "upgrade:exchange:mainnet": "UPGRADE_TARGET=exchange hardhat run --config hardhat.mainnet.config.cjs --network xlayer scripts/upgrade.cjs",
+    "admin:testnet": "hardhat run --config hardhat.testnet.config.cjs --network xlayerTestnet scripts/transfer_admin.cjs",
+    "admin:mainnet": "hardhat run --config hardhat.mainnet.config.cjs --network xlayer scripts/transfer_admin.cjs",
     "verify:card:testnet": "hardhat run --config hardhat.testnet.config.cjs --network xlayerTestnet scripts/verify_oklink.cjs",
     "verify:card:mainnet": "hardhat run --config hardhat.mainnet.config.cjs --network xlayer scripts/verify_oklink.cjs",
     "verify:exchange:testnet": "VERIFY_TARGET=exchange hardhat run --config hardhat.testnet.config.cjs --network xlayerTestnet scripts/verify_oklink.cjs",

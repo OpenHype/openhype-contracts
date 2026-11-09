@@ -562,6 +562,17 @@ describe('OpenHypeExchange', function () {
       await buy(f, { tokenIds: [1n] });
     });
 
+    it('lets a pauser pause but only the admin unpause', async function () {
+      const { exchange, admin, operator, outsider } = f;
+      await exchange.connect(admin).grantRole(await exchange.PAUSER_ROLE(), outsider.address);
+      await rejects(exchange.connect(operator).pause(), exchange, 'AccessControlUnauthorizedAccount');
+      await exchange.connect(outsider).pause();
+      assert.equal(await exchange.paused(), true);
+      await rejects(exchange.connect(outsider).unpause(), exchange, 'AccessControlUnauthorizedAccount');
+      await exchange.connect(admin).unpause();
+      assert.equal(await exchange.paused(), false);
+    });
+
     it('recovers tokens sent to it by mistake, for the admin only', async function () {
       const { exchange, token, admin, taker, outsider, exchangeAddress } = f;
       await token.mint(exchangeAddress, USD(7));

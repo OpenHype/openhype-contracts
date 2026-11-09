@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { testnetAddresses, mainnetDeployProblems, exchangeMainnetProblems } = require('../lib/mainnet_guard.cjs');
+const { testnetAddresses, mainnetDeployProblems, exchangeMainnetProblems, safeAdminProblems } = require('../lib/mainnet_guard.cjs');
 
 const a = n => '0x' + String(n).repeat(40).slice(0, 40);
 const ok = {
@@ -90,5 +90,27 @@ describe('mainnet exchange deployment guard', function () {
     assert.ok(exchangeMainnetProblems({ ...exchange, deployer: a(3) }).some(p => p.includes('deployer must not be the operator')));
     assert.ok(exchangeMainnetProblems({ ...exchange, taker: a(3) }).some(p => p.includes('operator and taker')));
     assert.ok(exchangeMainnetProblems({ ...exchange, operator: a(2) }).some(p => p.includes('admin must not be')));
+  });
+});
+
+describe('Safe admin guard', function () {
+  const safe = { safe: a(7), code: '0x6080', owners: [a(1), a(5), a(6)], threshold: 2n, roleKeys: { operator: a(3), taker: a(4) }, testnet: new Set([a(9)]) };
+  it('passes a 2-of-3 Safe whose owners hold no role', function () {
+    assert.deepEqual(safeAdminProblems(safe), []);
+  });
+  it('refuses an account without code or that is not a Safe', function () {
+    assert.ok(safeAdminProblems({ ...safe, code: '0x' })[0].includes('no code'));
+    assert.ok(safeAdminProblems({ ...safe, owners: undefined })[0].includes('getOwners'));
+  });
+  it('refuses a threshold below the minimum or above the owners', function () {
+    assert.ok(safeAdminProblems({ ...safe, threshold: 1n }).some(p => p.includes('below 2')));
+    assert.deepEqual(safeAdminProblems({ ...safe, threshold: 1n, minThreshold: 1 }), []);
+    assert.ok(safeAdminProblems({ ...safe, threshold: 4n }).some(p => p.includes('above its 3 owners')));
+  });
+  it('refuses role keys and testnet addresses among the owners', function () {
+    assert.ok(safeAdminProblems({ ...safe, owners: [a(1), a(3)] }).some(p => p.includes('operator key')));
+    assert.ok(safeAdminProblems({ ...safe, owners: [a(1), a(4).toUpperCase().replace('0X', '0x')] }).some(p => p.includes('taker key')));
+    assert.ok(safeAdminProblems({ ...safe, owners: [a(1), a(9)] }).some(p => p.includes('testnet')));
+    assert.ok(safeAdminProblems({ ...safe, safe: a(9) }).some(p => p.includes('Safe 0x9') && p.includes('testnet')));
   });
 });

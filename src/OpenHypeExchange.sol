@@ -75,6 +75,8 @@ contract OpenHypeExchange is
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     /// @notice Fills asks, paying sellers from its own balance.
     bytes32 public constant TAKER_ROLE = keccak256("TAKER_ROLE");
+    /// @notice Can pause but not unpause: a fast emergency stop that does not wait for the admin.
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     bytes32 public constant ASK_TYPEHASH = keccak256(
         "Ask(bytes32 askId,address seller,uint256[] tokenIds,uint256[] prices,address currency,uint256 price,uint256 validBefore)"
@@ -117,7 +119,7 @@ contract OpenHypeExchange is
         uint256[] targetTokenIds;
     }
 
-    /// @notice A delivery of inventory tokens to `to` with no payment (e.g. a game's prize).
+    /// @notice A delivery of inventory tokens to `to` with no payment.
     struct Delivery {
         bytes32 deliveryId;
         address to;
@@ -432,7 +434,10 @@ contract OpenHypeExchange is
         if (balance > 0) IERC20(currency).safeTransfer($.proceedsRecipient, balance);
     }
 
-    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    /// @notice Stops purchases, asks, upgrades and deliveries. A pauser or the admin can pause; only the admin
+    /// unpauses.
+    function pause() external {
+        if (!hasRole(PAUSER_ROLE, _msgSender())) _checkRole(DEFAULT_ADMIN_ROLE);
         _pause();
     }
 

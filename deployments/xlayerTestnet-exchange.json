@@ -3,7 +3,7 @@
   "proxy": "0x9F07a7408D03d90f7Ee77E51F2B4FcBf18ea5A21",
   "deployTx": "0x841e3205d76619715a233f7658e501b183d403df889d607e23dfb4854182e825",
   "deployer": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
-  "admin": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
+  "admin": "0x42a45E853A8674d4faA6ED62DDDd4943046Da19a",
   "operator": "0xB8E33FAbF9cAF7AA6b83D7DE8c044CCFbf9C03b7",
   "taker": "0x3E7B1778eAabe71100C7e584a10bE4ae9a8e24Df",
   "collection": "0xD21a980E70d6663a49715Be2E39b068AfF56f11B",
@@ -20,7 +20,7 @@
       "window": 3600
     }
   ],
-  "implementation": "0x69253F9443e9DcB2CfebF151f2399a39fA96E3ec",
+  "implementation": "0x04b034d2e807b45666144706BeF37D5598fC10Fe",
   "upgrades": [
     {
       "at": "2026-10-01T15:30:38.004Z",
@@ -41,6 +41,26 @@
       "at": "2026-10-08T03:10:07.284Z",
       "from": "0xc052629724bBCe813eAF276e4b74Cf825667e0e4",
       "to": "0x69253F9443e9DcB2CfebF151f2399a39fA96E3ec"
+    },
+    {
+      "at": "2026-11-04T10:06:49.770Z",
+      "from": "0x69253F9443e9DcB2CfebF151f2399a39fA96E3ec",
+      "to": "0x04b034d2e807b45666144706BeF37D5598fC10Fe"
+    }
+  ],
+  "adminHistory": [
+    {
+      "at": "2026-11-04T10:11:08.868Z",
+      "from": "0xB12bF640265a27b21f242c07Ce9872E8eBbB4771",
+      "to": "0x42a45E853A8674d4faA6ED62DDDd4943046Da19a",
+      "safeTestTxs": [
+        "0x79f5662b00ad71ed5148ebf0dc55c26949fac4424121dd499fcd19946ee7db0e",
+        "0x9a92dc39e1f4847471cd6525347790ba50a0fcdc52ddd3c7a68e7f4174e57bce"
+      ],
+      "renounceTxs": [
+        "0x2fa6d482932dbb6039f4b0d7d2d26cb3e5e2ff3b3cc85811b8e3508d41c518ed",
+        "0x02936214fc9762aad5bea3ef10fe7006aca1cc9098a4c9d0612cb0f1dd15c805"
+      ]
     }
   ]
 }

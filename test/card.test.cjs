@@ -116,6 +116,17 @@ describe('OpenHypeCollectible', function () {
     await assert.doesNotReject(asRelayer.burn(1n));
   });
 
+  it('lets a pauser pause but only the admin unpause', async function () {
+    const { card, relayer, other } = f;
+    await card.grantRole(await card.PAUSER_ROLE(), other.address);
+    await rejects(card.connect(relayer).pause(), card, 'AccessControlUnauthorizedAccount');
+    await card.connect(other).pause();
+    assert.equal(await card.paused(), true);
+    await rejects(card.connect(other).unpause(), card, 'AccessControlUnauthorizedAccount');
+    await card.unpause();
+    assert.equal(await card.paused(), false);
+  });
+
   it('advertises ERC721, ERC-5192, ERC-4906 and AccessControl', async function () {
     const { card } = f;
     for (const id of ['0x80ac58cd', '0x5b5e139f', '0xb45a3c0e', '0x49064906', '0x7965db0b', '0x01ffc9a7']) {
@@ -309,5 +320,66 @@ describe('OpenHypeCollectible', function () {
       await rejects(relay(await authorize(user)), card, 'EnforcedPause');
     });
   });
-});
 
+  describe('card records', function () {
+    const graded = { card: 'Pokemon | Base Set | 4/102 | Charizard | English | Holo', grader: 'PSA', certNumber: '12345678', grade: '10' };
+    const raw = { card: 'Pokemon | Jungle | 1/64 | Clefable | English | Holo', grader: '', certNumber: '', grade: '' };
+    const hash = r => ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(['string', 'string', 'string', 'string'], [r.card, r.grader, r.certNumber, r.grade]));
+    const recorded = (receipt, card, name) =>
+      receipt.logs.map(l => card.interface.parseLog(l)).filter(l => l?.name === name).map(l => [l.args.tokenId, l.args.card, l.args.grader, l.args.certNumber, l.args.grade]);
+
+    it('records graded and ungraded cards once each, with their hash', async function () {
+      const { card, asRelayer, vault } = f;
+      await asRelayer.mintBatch(vault.address, [1n, 2n]);
+      const receipt = await (await asRelayer.recordCards([1n, 2n], [graded, raw])).wait();
+      assert.deepEqual(recorded(receipt, card, 'CardRecorded'), [
+        [1n, graded.card, 'PSA', '12345678', '10'],
+        [2n, raw.card, '', '', ''],
+      ]);
+      assert.equal(await card.cardRecordHash(1n), hash(graded));
+      assert.equal(await card.cardRecordHash(2n), hash(raw));
+      await rejects(asRelayer.recordCards([1n], [raw]), card, 'CardAlreadyRecorded');
+      assert.equal(await card.cardRecordHash(1n), hash(graded));
+    });
+
+    it('records a card already shipped, but not a token that never existed', async function () {
+      const { card, asRelayer, user } = f;
+      await asRelayer.mint(user.address, 3n);
+      await asRelayer.burn(3n);
+      await asRelayer.recordCards([3n], [graded]);
+      assert.equal(await card.cardRecordHash(3n), hash(graded));
+      await rejects(asRelayer.recordCards([4n], [graded]), card, 'ERC721NonexistentToken');
+    });
+
+    it('refuses incomplete records, mismatched lists, other callers and pauses, atomically', async function () {
+      const { card, asRelayer, vault, other } = f;
+      await asRelayer.mintBatch(vault.address, [1n, 2n]);
+      for (const bad of [
+        { ...raw, card: '' },
+        { ...graded, certNumber: '' },
+        { ...raw, certNumber: '123' },
+        { ...raw, grade: '10' },
+      ])
+        await rejects(asRelayer.recordCards([1n], [bad]), card, 'InvalidCardRecord');
+      // An invalid record later in the batch undoes the earlier ones.
+      await rejects(asRelayer.recordCards([1n, 2n], [graded, { ...raw, card: '' }]), card, 'InvalidCardRecord');
+      assert.equal(await card.cardRecordHash(1n), ethers.ZeroHash);
+      await rejects(asRelayer.recordCards([1n, 2n], [graded]), card, 'LengthMismatch');
+      await rejects(card.connect(other).recordCards([1n], [graded]), card, 'AccessControlUnauthorizedAccount');
+      await card.pause();
+      await rejects(asRelayer.recordCards([1n], [graded]), card, 'EnforcedPause');
+    });
+
+    it('lets only the admin correct a record, keeping the history in events', async function () {
+      const { card, asRelayer, vault } = f;
+      await asRelayer.mint(vault.address, 1n);
+      await rejects(card.correctCard(1n, graded), card, 'CardNotRecorded');
+      await asRelayer.recordCards([1n], [{ ...graded, certNumber: '12345670' }]);
+      await rejects(asRelayer.correctCard(1n, graded), card, 'AccessControlUnauthorizedAccount');
+      await rejects(card.correctCard(1n, { ...graded, grader: '' }), card, 'InvalidCardRecord');
+      const receipt = await (await card.correctCard(1n, graded)).wait();
+      assert.deepEqual(recorded(receipt, card, 'CardCorrected'), [[1n, graded.card, 'PSA', '12345678', '10']]);
+      assert.equal(await card.cardRecordHash(1n), hash(graded));
+    });
+  });
+});
