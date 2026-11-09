@@ -10,7 +10,9 @@
 // confirms the proxy moved and records the upgrade.
 // REDEPLOY_IMPLEMENTATION=yes deploys a new implementation even when only comments changed (the plugin
 // compares bytecode without metadata), so the verified source matches the repository.
-// CARD_SET_OWNER=<address> (card only) also calls setOwner(address) inside the upgrade transaction (upgradeToAndCall).
+// CARD_SET_OWNER=<address> or CARD_SET_INVENTORY=<address> (card only, one of them) also calls setOwner / setInventory
+// inside the upgrade transaction (upgradeToAndCall). A card proxy whose inventory is unset must get CARD_SET_INVENTORY:
+// operatorTransfer reverts until the inventory is set, so the upgrade sets it in the same transaction.
 const fs = require('node:fs');
 const path = require('node:path');
 const { ethers, upgrades, network } = require('hardhat');
@@ -26,15 +28,23 @@ async function main() {
   const Card = await ethers.getContractFactory(TARGETS[TARGET]);
   const before = await upgrades.erc1967.getImplementationAddress(report.proxy);
   const { chainId } = await ethers.provider.getNetwork();
-  if (process.env.CARD_SET_OWNER && TARGET !== 'card') throw new Error('CARD_SET_OWNER applies to the card only');
+  if ((process.env.CARD_SET_OWNER || process.env.CARD_SET_INVENTORY) && TARGET !== 'card')
+    throw new Error('CARD_SET_OWNER and CARD_SET_INVENTORY apply to the card only');
+  if (process.env.CARD_SET_OWNER && process.env.CARD_SET_INVENTORY) throw new Error('Set CARD_SET_OWNER or CARD_SET_INVENTORY, not both');
   const owner = process.env.CARD_SET_OWNER ? ethers.getAddress(process.env.CARD_SET_OWNER) : null;
-  const call = owner ? { fn: 'setOwner', args: [owner] } : undefined;
+  const inventory = process.env.CARD_SET_INVENTORY ? ethers.getAddress(process.env.CARD_SET_INVENTORY) : null;
+  const call = owner ? { fn: 'setOwner', args: [owner] } : inventory ? { fn: 'setInventory', args: [inventory] } : undefined;
+  if (TARGET === 'card' && !inventory && !report.pendingUpgrade) {
+    const current = await Card.attach(report.proxy).inventory().catch(() => ethers.ZeroAddress); // earlier versions have none
+    if (current === ethers.ZeroAddress)
+      throw new Error('The card has no inventory yet: set CARD_SET_INVENTORY=<inventory address> (the exchange inventory)');
+  }
   const adminIsEoa = (await ethers.provider.getCode(report.admin)) === '0x';
   if (!adminIsEoa) return proposeViaSafe(file, report, Card, before, call);
   if (chainId === MAINNET) {
     const [signer] = await ethers.getSigners();
     if (signer.address !== report.admin) throw new Error(`The admin ${report.admin} is an EOA: sign with it (signer is ${signer.address})`);
-    console.log(JSON.stringify({ proxy: report.proxy, admin: report.admin, from: before, setOwner: owner }));
+    console.log(JSON.stringify({ proxy: report.proxy, admin: report.admin, from: before, setOwner: owner, setInventory: inventory }));
     if (process.env.CONFIRM_MAINNET !== 'yes') throw new Error('Re-run with CONFIRM_MAINNET=yes to upgrade the mainnet proxy.');
   }
 
@@ -49,7 +59,10 @@ async function main() {
   }
   if (after === before) throw new Error('Implementation did not change; check the upgrade transaction');
   report.implementation = after;
-  report.upgrades = [...(report.upgrades || []), { at: new Date().toISOString(), from: before, to: after, ...(owner ? { setOwner: owner } : {}) }];
+  report.upgrades = [...(report.upgrades || []), {
+    at: new Date().toISOString(), from: before, to: after, ...(owner ? { setOwner: owner } : {}), ...(inventory ? { setInventory: inventory } : {}),
+  }];
+  if (inventory) report.inventory = inventory;
   fs.writeFileSync(file, JSON.stringify(report, null, 2) + '\n');
   if (owner) {
     // Same lagging-node caveat as the implementation read above.
@@ -60,6 +73,14 @@ async function main() {
     }
     if (current !== owner) throw new Error(`owner() is ${current}, expected ${owner}`);
   }
+  if (inventory) {
+    let current = null;
+    for (let i = 0; i < 30 && current !== inventory; i++) {
+      current = await card.inventory();
+      if (current !== inventory) await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    if (current !== inventory) throw new Error(`inventory() is ${current}, expected ${inventory}`);
+  }
   const domain = await card.eip712Domain();
   console.log(JSON.stringify({ proxy: report.proxy, from: before, to: after, eip712: { name: domain.name, version: domain.version } }, null, 2));
 }
@@ -69,7 +90,15 @@ async function proposeViaSafe(file, report, Card, current, call) {
   const pending = report.pendingUpgrade;
   if (pending && current.toLowerCase() === pending.to.toLowerCase()) {
     report.implementation = current;
-    report.upgrades = [...(report.upgrades || []), { at: new Date().toISOString(), from: pending.from, to: current, via: 'safe' }];
+    const { call: pendingCall } = pending;
+    if (pendingCall?.fn === 'setInventory') {
+      const actual = await Card.attach(report.proxy).inventory();
+      if (actual !== pendingCall.args[0]) throw new Error(`inventory() is ${actual}, expected ${pendingCall.args[0]}`);
+      report.inventory = actual;
+    }
+    report.upgrades = [...(report.upgrades || []), {
+      at: new Date().toISOString(), from: pending.from, to: current, via: 'safe', ...(pendingCall ? { [pendingCall.fn]: pendingCall.args[0] } : {}),
+    }];
     delete report.pendingUpgrade;
     save();
     console.log(JSON.stringify({ proxy: report.proxy, upgraded: true, implementation: current }, null, 2));
@@ -83,7 +112,7 @@ async function proposeViaSafe(file, report, Card, current, call) {
   }
   const init = call ? Card.interface.encodeFunctionData(call.fn, call.args) : '0x';
   const data = Card.interface.encodeFunctionData('upgradeToAndCall', [implementation, init]);
-  report.pendingUpgrade = { at: new Date().toISOString(), from: current, to: implementation };
+  report.pendingUpgrade = { at: new Date().toISOString(), from: current, to: implementation, ...(call ? { call } : {}) };
   save();
   console.log(JSON.stringify({
     safe: report.admin,

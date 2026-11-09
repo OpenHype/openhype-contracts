@@ -60,7 +60,7 @@ async function deploy() {
   const Card = await ethers.getContractFactory('OpenHypeCollectible');
   const card = await upgrades.deployProxy(
     Card,
-    [admin.address, relayer.address, 'https://meta.example/cards/', 'https://meta.example/contract'],
+    [admin.address, relayer.address, inventory.address, 'https://meta.example/cards/', 'https://meta.example/contract'],
     { kind: 'uups' },
   );
   const token = await (await ethers.getContractFactory('Eip3009TestToken')).deploy('Test USD', '2');

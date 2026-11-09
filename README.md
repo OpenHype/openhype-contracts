@@ -33,7 +33,7 @@ The tokens are OpenHype's record of the physical cards it holds for collectors, 
 
 - **Redemption happens off chain.** Holding a token does not let anyone claim the card or a refund through the contracts. When a collector asks for a card to be shipped, OpenHype checks the request, burns the token and ships the card. Whether a card exists, is authentic, insured or delivered is outside what the contracts can prove.
 - **One token per card.** A `tokenId` stands for one stay of a card in the vault: a burned `tokenId` is never minted again, and a card deposited again later gets a new one.
-- **The operator moves cards without a holder's signature.** The platform's operator mints, moves and burns cards and settles trades; this is how actions in the app are reflected on chain. Holders can't move cards themselves, so a card can't be sent to the wrong address or listed elsewhere.
+- **The operator moves cards without a holder's signature.** The platform's operator mints, moves and burns cards and settles trades; this is how actions in the app are reflected on chain. Every operator move goes into or out of the inventory address (`operatorTransfer` reverts otherwise), so the operator cannot send a holder's card to another holder or any other address. Holders can't move cards themselves, so a card can't be sent to the wrong address or listed elsewhere.
 - **The admin** can upgrade both contracts, manage roles, change metadata URIs and the exchange's settings (inventory, proceeds recipient, currencies, taker limits) and unpause. It is held by OpenHype and is moving to a Safe multisig. A **pauser** can pause either contract in an emergency but cannot unpause it.
 
 ## Deployments

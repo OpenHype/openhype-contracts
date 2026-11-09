@@ -18,7 +18,7 @@ async function deploy() {
   const Card = await ethers.getContractFactory('OpenHypeCollectible');
   const card = await upgrades.deployProxy(
     Card,
-    [admin.address, relayer.address, 'https://meta.example/cards/', 'https://meta.example/contract'],
+    [admin.address, relayer.address, vault.address, 'https://meta.example/cards/', 'https://meta.example/contract'],
     { kind: 'uups' },
   );
   return { admin, relayer, user, other, vault, card, asRelayer: card.connect(relayer) };
@@ -83,14 +83,42 @@ describe('OpenHypeCollectible', function () {
     assert.equal(await card.ownerOf(1n), user.address);
   });
 
-  it('lets the operator move cards between the vault and holders', async function () {
+  it('lets the operator move cards between the vault and holders, never between holders', async function () {
     const { card, asRelayer, user, other, vault } = f;
     await asRelayer.mintBatch(vault.address, [7n]);
     await asRelayer.operatorTransfer(vault.address, user.address, 7n);
-    await asRelayer.operatorTransfer(user.address, other.address, 7n);
-    assert.equal(await card.ownerOf(7n), other.address);
+    const refused = await rejects(asRelayer.operatorTransfer(user.address, other.address, 7n), card, 'NotViaInventory');
+    assert.deepEqual([...refused.args], [user.address, other.address]);
+    await rejects(asRelayer.operatorTransfer(user.address, ethers.ZeroAddress, 7n), card, 'NotViaInventory');
+    await asRelayer.operatorTransfer(user.address, vault.address, 7n);
+    assert.equal(await card.ownerOf(7n), vault.address);
     await rejects(asRelayer.operatorTransfer(user.address, vault.address, 7n), card, 'ERC721IncorrectOwner');
-    await rejects(asRelayer.operatorTransfer(other.address, ethers.ZeroAddress, 7n), card, 'ERC721InvalidReceiver');
+    await rejects(asRelayer.operatorTransfer(vault.address, ethers.ZeroAddress, 7n), card, 'ERC721InvalidReceiver');
+  });
+
+  it('lets only the admin set the inventory, never to zero, and moves follow the new one', async function () {
+    const { card, asRelayer, relayer, user, other, vault } = f;
+    assert.equal(await card.inventory(), vault.address);
+    const deployed = await ethers.provider.getTransactionReceipt(card.deploymentTransaction().hash);
+    assert.ok(deployed.logs.some(l => card.interface.parseLog(l)?.name === 'InventoryUpdated'));
+    await rejects(card.connect(relayer).setInventory(relayer.address), card, 'AccessControlUnauthorizedAccount');
+    await rejects(card.setInventory(ethers.ZeroAddress), card, 'InvalidInventory');
+    await asRelayer.mintBatch(vault.address, [8n]);
+    const receipt = await (await card.setInventory(other.address)).wait();
+    const updated = receipt.logs.map(l => card.interface.parseLog(l)).find(l => l?.name === 'InventoryUpdated');
+    assert.equal(updated.args.inventory, other.address);
+    await rejects(asRelayer.operatorTransfer(vault.address, user.address, 8n), card, 'NotViaInventory');
+    await asRelayer.operatorTransfer(vault.address, other.address, 8n);
+    await asRelayer.operatorTransfer(other.address, user.address, 8n);
+    assert.equal(await card.ownerOf(8n), user.address);
+  });
+
+  it('refuses a zero inventory at initialization', async function () {
+    const { admin, relayer } = f;
+    const Card = await ethers.getContractFactory('OpenHypeCollectible');
+    await assert.rejects(
+      upgrades.deployProxy(Card, [admin.address, relayer.address, ethers.ZeroAddress, 'u/', 'c'], { kind: 'uups' }),
+    );
   });
 
   it('burns for physical redemption and never re-mints a burned token', async function () {
@@ -212,7 +240,7 @@ describe('OpenHypeCollectible', function () {
 
   it('rejects re-initialization', async function () {
     const { card, other } = f;
-    await rejects(card.initialize(other.address, other.address, 'x/', 'y'), card, 'InvalidInitialization');
+    await rejects(card.initialize(other.address, other.address, other.address, 'x/', 'y'), card, 'InvalidInitialization');
   });
 
   describe('holder-signed transfers (EIP-712)', function () {

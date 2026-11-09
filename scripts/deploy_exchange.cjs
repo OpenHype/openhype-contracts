@@ -96,6 +96,7 @@ async function main() {
   assert.equal(await exchange.paused(), false);
 
   await collectionRoles(report, deployer, chainId);
+  await collectionInventory(report);
   console.log(JSON.stringify(report, null, 2));
 }
 
@@ -155,6 +156,17 @@ async function collectionRoles(report, signer, chainId) {
   console.log(JSON.stringify({
     collectionRolesMissing: missing.map(([name]) => name),
     callsForCollectionAdmin: missing.map(([, role]) => ({ to: report.collection, data: card.interface.encodeFunctionData('grantRole', [role, report.proxy]) })),
+  }, null, 2));
+}
+
+/** The collection only lets the operator move cards into or out of its inventory: it must be the exchange's. */
+async function collectionInventory(report) {
+  const card = await ethers.getContractAt('OpenHypeCollectible', report.collection);
+  const current = await card.inventory();
+  if (current === report.inventory) return console.log(JSON.stringify({ collectionInventory: 'matches' }));
+  console.log(JSON.stringify({
+    collectionInventoryMismatch: { collection: current, exchange: report.inventory },
+    callForCollectionAdmin: { to: report.collection, data: card.interface.encodeFunctionData('setInventory', [report.inventory]) },
   }, null, 2));
 }
 

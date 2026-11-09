@@ -1,4 +1,4 @@
-// Deploys the OpenHypeCollectible UUPS proxy. The deployer only pays gas: admin and relayer come
+// Deploys the OpenHypeCollectible UUPS proxy. The deployer only pays gas: admin, relayer and inventory come
 // from the environment and the deployer keeps no role unless it is explicitly the admin.
 // Resumable: an existing report is verified, never redeployed.
 // Mainnet (network xlayer, hardhat.mainnet.config.cjs) runs lib/mainnet_guard.cjs first and needs
@@ -18,6 +18,7 @@ async function main() {
     throw new Error(`Unsupported network ${network.name}`);
   const admin = ethers.getAddress(requireEnv('CARD_ADMIN_ADDRESS'));
   const relayer = ethers.getAddress(requireEnv('CARD_RELAYER_ADDRESS'));
+  const inventory = ethers.getAddress(requireEnv('CARD_INVENTORY_ADDRESS'));
   const baseURI = requireEnv('CARD_BASE_URI');
   const contractURI = requireEnv('CARD_CONTRACT_URI');
   if (admin === relayer) throw new Error('Admin and relayer must be different keys');
@@ -29,7 +30,7 @@ async function main() {
 
   let report = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
   if (!report) {
-    const plan = { chainId: Number(chainId), deployer: deployer.address, admin, relayer, baseURI, contractURI };
+    const plan = { chainId: Number(chainId), deployer: deployer.address, admin, relayer, inventory, baseURI, contractURI };
     console.log(JSON.stringify(plan));
     if (chainId === MAINNET) {
       const problems = mainnetDeployProblems({
@@ -43,7 +44,7 @@ async function main() {
       if (process.env.CONFIRM_MAINNET !== 'yes')
         throw new Error('Mainnet plan above passed the checks. Re-run with CONFIRM_MAINNET=yes to deploy.');
     }
-    const card = await upgrades.deployProxy(Card, [admin, relayer, baseURI, contractURI], {
+    const card = await upgrades.deployProxy(Card, [admin, relayer, inventory, baseURI, contractURI], {
       kind: 'uups',
       timeout: 120000,
     });
@@ -54,6 +55,7 @@ async function main() {
       deployer: deployer.address,
       admin,
       relayer,
+      inventory,
       baseURI,
       contractURI,
     };
@@ -75,6 +77,7 @@ async function main() {
   if (deployer.address !== report.admin)
     assert.equal(await card.hasRole(await card.DEFAULT_ADMIN_ROLE(), deployer.address), false, 'deployer holds no role');
   assert.equal(await card.paused(), false);
+  if (report.inventory) assert.equal(await card.inventory(), report.inventory, 'inventory');
   if (report.contractURI) assert.equal(await card.contractURI(), report.contractURI, 'contractURI');
   console.log(JSON.stringify(report, null, 2));
 }

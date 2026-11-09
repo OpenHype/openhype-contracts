@@ -18,6 +18,8 @@ pragma solidity 0.8.30;
  *  - The platform mirrors ownership from the OpenHype app: it mints when a card is
  *    delivered to a collector or pre-minted into the inventory, moves it whenever it changes
  *    hands in the app, and burns it when the physical card is shipped to its owner.
+ *  - Every platform move goes into or out of the inventory address: the operator can take a card
+ *    back into the inventory or deliver one from it, never send a holder's card anywhere else.
  *  - A holder can consent to a move by signing an EIP-712 TransferWithAuthorization
  *    (modelled on EIP-3009); the platform relays it and pays the gas.
  *  - A burned tokenId can never be minted again. A tokenId stands for one stay of the card
@@ -71,6 +73,8 @@ contract OpenHypeCollectible is
     address private owner_;
     /// @notice keccak256(abi.encode(card, grader, certNumber, grade)) of a token's card record; zero until recorded.
     mapping(uint256 => bytes32) public cardRecordHash;
+    /// @dev The platform inventory: one end of every operatorTransfer.
+    address private inventory_;
 
     /// @notice What a token stands for: `card` identifies the card in one readable string (e.g. game | set | number |
     /// name | language | variant); `grader`, `certNumber` and `grade` are set for a graded card and empty otherwise.
@@ -91,6 +95,8 @@ contract OpenHypeCollectible is
     error InvalidCardRecord(uint256 tokenId);
     error CardAlreadyRecorded(uint256 tokenId);
     error CardNotRecorded(uint256 tokenId);
+    error InvalidInventory();
+    error NotViaInventory(address from, address to);
 
     /// @dev ERC-5192
     event Locked(uint256 tokenId);
@@ -107,19 +113,24 @@ contract OpenHypeCollectible is
     event CardRecorded(uint256 indexed tokenId, string card, string grader, string certNumber, string grade);
     /// @notice The admin replaced a token's card record; the earlier CardRecorded / CardCorrected stays on chain.
     event CardCorrected(uint256 indexed tokenId, string card, string grader, string certNumber, string grade);
+    event InventoryUpdated(address inventory);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
+    /// @param inventory The platform inventory address (see setInventory).
     /// @param uri Token metadata base URI: tokenURI is this plus the decimal tokenId.
     /// @param collectionURI Collection metadata (ERC-7572), so a Safe-administered deployment
     /// shows its name and image from the start.
-    function initialize(address admin, address relayer, string calldata uri, string calldata collectionURI)
-        external
-        initializer
-    {
+    function initialize(
+        address admin,
+        address relayer,
+        address inventory,
+        string calldata uri,
+        string calldata collectionURI
+    ) external initializer {
         __ERC721_init(NAME, SYMBOL);
         __AccessControl_init();
         __Pausable_init();
@@ -131,6 +142,7 @@ contract OpenHypeCollectible is
         contractURI_ = collectionURI;
         emit ContractURIUpdated();
         _setOwner(admin);
+        _setInventory(inventory);
     }
 
     // ---------------------------------------------------------------- platform moves
@@ -144,7 +156,9 @@ contract OpenHypeCollectible is
         for (uint256 i = 0; i < tokenIds.length; i++) _mintLocked(to, tokenIds[i]);
     }
 
+    /// @notice Moves a card into or out of the inventory: one of `from` and `to` must be the inventory.
     function operatorTransfer(address from, address to, uint256 tokenId) external onlyRole(OPERATOR_ROLE) whenNotPaused {
+        if (from != inventory_ && to != inventory_) revert NotViaInventory(from, to);
         _transfer(from, to, tokenId);
     }
 
@@ -279,6 +293,17 @@ contract OpenHypeCollectible is
         _setOwner(newOwner);
     }
 
+    /// @notice The platform inventory address, one end of every operatorTransfer. Unset (zero) on a proxy upgraded
+    /// from an earlier version until setInventory, and operatorTransfer reverts until then: set it in the upgrade call.
+    function inventory() external view returns (address) {
+        return inventory_;
+    }
+
+    /// @notice Must match the exchange's inventory, or the exchange cannot move cards.
+    function setInventory(address newInventory) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setInventory(newInventory);
+    }
+
     /// @notice Stops every platform move. A pauser or the admin can pause; only the admin unpauses.
     function pause() external onlyPauserOrAdmin {
         _pause();
@@ -332,6 +357,12 @@ contract OpenHypeCollectible is
         if (bytes(r.card).length == 0 || graded != (bytes(r.certNumber).length > 0) || (!graded && bytes(r.grade).length > 0))
             revert InvalidCardRecord(tokenId);
         return keccak256(abi.encode(r.card, r.grader, r.certNumber, r.grade));
+    }
+
+    function _setInventory(address newInventory) private {
+        if (newInventory == address(0)) revert InvalidInventory();
+        inventory_ = newInventory;
+        emit InventoryUpdated(newInventory);
     }
 
     function _setOwner(address newOwner) private {

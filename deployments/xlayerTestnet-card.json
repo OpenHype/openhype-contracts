@@ -5,7 +5,7 @@
   "admin": "0x42a45E853A8674d4faA6ED62DDDd4943046Da19a",
   "relayer": "0xB8E33FAbF9cAF7AA6b83D7DE8c044CCFbf9C03b7",
   "baseURI": "https://api-dev.openhype.com/v1/nft_metadata/asset/",
-  "implementation": "0xC43C74A7F3D966B052942D369d93c07F318a0Bbd",
+  "implementation": "0x8a3535D06743CD8386D84686845bc0aB06A2c357",
   "upgrades": [
     {
       "at": "2026-09-23T10:34:30.599Z",
@@ -54,6 +54,13 @@
       "from": "0x55E7dc63131d986F54C8eC7BAc00ceB3c66CD903",
       "to": "0xC43C74A7F3D966B052942D369d93c07F318a0Bbd",
       "via": "safe"
+    },
+    {
+      "at": "2026-11-09T15:58:45.731Z",
+      "from": "0xC43C74A7F3D966B052942D369d93c07F318a0Bbd",
+      "to": "0x8a3535D06743CD8386D84686845bc0aB06A2c357",
+      "via": "safe",
+      "setInventory": "0x5AF09cF7B58B4Ac2D5BcFbbf73E93064A5334BD1"
     }
   ],
   "contractURI": "https://api-dev.openhype.com/v1/nft_metadata/contract",
@@ -71,5 +78,6 @@
         "0x02936214fc9762aad5bea3ef10fe7006aca1cc9098a4c9d0612cb0f1dd15c805"
       ]
     }
-  ]
+  ],
+  "inventory": "0x5AF09cF7B58B4Ac2D5BcFbbf73E93064A5334BD1"
 }
